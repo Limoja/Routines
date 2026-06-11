@@ -72,6 +72,7 @@ async function trigger(routinePath) {
       project,
       specRepo: config.specRepo,
       specBranch: config.specBranch || 'main',
+      routinesRepo: 'https://github.com/Limoja/Routines.git',
       specPath: `${project}/specs/${config.role}.md`,
       inputHandoff: config.inputHandoff ? `${project}/${config.inputHandoff}` : null,
       outputHandoff: config.outputHandoff ? `${project}/${config.outputHandoff}` : null,
