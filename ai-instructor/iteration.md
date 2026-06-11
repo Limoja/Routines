@@ -23,11 +23,12 @@
 | 12 | Analytics + Final QA | pending | - |
 
 ## Iteration 0 Progress
-- [x] Backend pytest suite (48 tests)
-- [x] E2E test script (21 tests)
+- [ ] Backend pytest suite (0 tests — no test infrastructure)
+- [ ] E2E test suite (only screenshot capture, no assertions)
 - [ ] Frontend vitest
-- [ ] CI pipeline (GitHub Actions)
+- [ ] Test CI pipeline (GitHub Actions)
 
 ## Notes
-- Iteration 0 partially done from first routine run (2026-06-11)
+- Shared context corrected on 2026-06-11: previous claims of 48 pytest / 21 E2E tests were false
+- Pipeline has not run yet — this will be the first cycle
 - Dev environment not yet set up (dev container apps pending)

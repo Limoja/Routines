@@ -42,8 +42,8 @@ Creative Thinking, Strategic Planning, Analytical Reasoning, Operational Executi
 - Author (score >= 0.6): create and innovate
 
 ## Current State (Iteration 0 in progress)
-- Backend pytest: 48 tests passing
-- E2E tests: 21 tests passing
-- Frontend vitest: not set up
-- CI pipeline: not set up
-- All existing features working (auth, onboarding, curriculum, lessons, chat, practice)
+- Backend pytest: **not set up** — `server-python/` has only `main.py`, zero test files
+- E2E tests: **not set up** — only `screenshot-test.mjs` (screenshot capture, no assertions)
+- Frontend vitest: **not set up**
+- CI pipeline: **deploy only** — `build-api.yml` and `deploy-azure.yml` exist but run no tests
+- Features present: auth, onboarding, curriculum, lessons, chat, practice (untested)
