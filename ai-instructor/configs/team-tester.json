@@ -1,6 +1,6 @@
 {
   "name": "team-tester",
-  "agentId": "agent-team",
+  "agentId": "agent-default",
   "role": "tester",
   "inputHandoff": "handoff/3-dev-report.md",
   "outputHandoff": "handoff/4-test-report.md",

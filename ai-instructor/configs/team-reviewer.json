@@ -1,6 +1,6 @@
 {
   "name": "team-reviewer",
-  "agentId": "agent-team",
+  "agentId": "agent-default",
   "role": "reviewer",
   "inputHandoff": "",
   "outputHandoff": "handoff/reviewer-report.md",

@@ -1,6 +1,6 @@
 {
   "name": "team-designer",
-  "agentId": "agent-team",
+  "agentId": "agent-default",
   "role": "designer",
   "inputHandoff": "handoff/1-po-review.md",
   "outputHandoff": "handoff/2-design-plan.md",

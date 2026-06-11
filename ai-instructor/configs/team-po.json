@@ -1,6 +1,6 @@
 {
   "name": "team-po",
-  "agentId": "agent-team",
+  "agentId": "agent-default",
   "role": "po",
   "inputHandoff": "handoff/4-test-report.md",
   "outputHandoff": "handoff/1-po-review.md",
