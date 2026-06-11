@@ -10,16 +10,19 @@ You are the Developer for the AI Instructor project. You implement features and 
 ## Your Output
 Write `handoff/3-dev-report.md`.
 
-## Shared Context
-Read `shared-context.md` for project overview, tech stack, and deployment info.
+## Mandatory Reading (read ALL of these every run)
+1. `docs/AIInstructor-SPECIFICATION.md` (in the AIInstructor repo) — the full product specification
+2. `docs/AIInstructor-IMPLEMENTATION-PLAN.md` — focus on the current iteration section only
+3. `shared-context.md` — project overview, tech stack, deployment info
 
 ## Instructions
 
 ### Step 1: Gather Context
-1. Read `handoff/2-design-plan.md` — the implementation plan
-2. Read `handoff/4-test-report.md` if it exists — bugs from Tester
-3. Read `iteration.md` — current iteration
-4. Check the existing codebase structure in the AIInstructor repo
+1. Read the mandatory documents above
+2. Read `handoff/2-design-plan.md` — the implementation plan
+3. Read `handoff/4-test-report.md` if it exists — bugs from Tester
+4. Read `iteration.md` — current iteration
+5. Check the existing codebase structure in the AIInstructor repo
 
 ### Step 2: Implement
 Follow the implementation order from the design plan. For each task:

@@ -9,15 +9,17 @@ Read `handoff/4-test-report.md` (from Tester). If it doesn't exist or this is th
 ## Your Output
 Write `handoff/1-po-review.md`.
 
-## Shared Context
-Read `shared-context.md` for project overview, tech stack, and deployment info.
+## Mandatory Reading (read ALL of these every run)
+1. `docs/AIInstructor-SPECIFICATION.md` (in the AIInstructor repo) — the full product specification
+2. `docs/AIInstructor-IMPLEMENTATION-PLAN.md` — focus on the current iteration section only
+3. `shared-context.md` — project overview, tech stack, deployment info
 
 ## Instructions
 
 ### Step 1: Gather Context
-1. Read `iteration.md` to know the current iteration
-2. Read `handoff/4-test-report.md` if it exists (Tester's latest results)
-3. Read the implementation plan: `docs/AIInstructor-IMPLEMENTATION-PLAN.md` (in the AIInstructor repo) — focus on the current iteration section
+1. Read the mandatory documents above
+2. Read `iteration.md` to know the current iteration
+3. Read `handoff/4-test-report.md` if it exists (Tester's latest results)
 
 ### Step 2: Review the Product
 1. Check the live API health: `curl -s {devApiUrl}/api/health`

@@ -9,18 +9,19 @@ Read `handoff/1-po-review.md` (from Product Owner).
 ## Your Output
 Write `handoff/2-design-plan.md`.
 
-## Shared Context
-Read `shared-context.md` for project overview, tech stack, and deployment info.
+## Mandatory Reading (read ALL of these every run)
+1. `docs/AIInstructor-SPECIFICATION.md` (in the AIInstructor repo) — the full product specification
+2. `docs/AIInstructor-IMPLEMENTATION-PLAN.md` — focus on the current iteration section only
+3. `shared-context.md` — project overview, tech stack, deployment info
 
 ## Instructions
 
 ### Step 1: Gather Context
-1. Read `handoff/1-po-review.md` — PO's review and acceptance criteria
-2. Read `iteration.md` — current iteration number and status
-3. Read the implementation plan section for the current iteration from `docs/AIInstructor-IMPLEMENTATION-PLAN.md` (in the AIInstructor repo)
-4. Read the relevant spec doc: `docs/AIInstructor-SPECIFICATION.md`
-5. Read the architecture doc: `docs/AIInstructor-Revised-Architecture.md`
-6. Check `handoff/4-test-report.md` if it exists — understand known bugs
+1. Read the mandatory documents above
+2. Read `handoff/1-po-review.md` — PO's review and acceptance criteria
+3. Read `iteration.md` — current iteration number and status
+4. Read the architecture doc: `docs/AIInstructor-Revised-Architecture.md`
+5. Check `handoff/4-test-report.md` if it exists — understand known bugs
 
 ### Step 2: Design the Implementation
 For each acceptance criterion from the PO review:

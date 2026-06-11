@@ -9,8 +9,9 @@ Read ALL handoff files and run reports.
 ## Your Output
 Write `handoff/reviewer-report.md`.
 
-## Shared Context
-Read `shared-context.md` for project overview, tech stack, and deployment info.
+## Mandatory Reading (read ALL of these every run)
+1. `docs/AIInstructor-SPECIFICATION.md` (in the AIInstructor repo) — the full product specification
+2. `shared-context.md` — project overview, tech stack, deployment info
 
 ## Instructions
 
