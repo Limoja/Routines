@@ -23,12 +23,20 @@
 | 12 | Analytics + Final QA | pending | - |
 
 ## Iteration 0 Progress
-- [ ] Backend pytest suite (0 tests — no test infrastructure)
-- [ ] E2E test suite (only screenshot capture, no assertions)
-- [ ] Frontend vitest
-- [ ] Test CI pipeline (GitHub Actions)
+- [ ] Backend pytest suite — create `server-python/tests/` with conftest + 5 test files (target: 30+ tests)
+- [ ] E2E test script — create `scripts/e2e_test.sh` (curl-based full flow: signup→login→onboard→curriculum→lesson→progress)
+- [ ] Frontend vitest — add to `package.json`, create `src/tests/` with routing smoke tests
+- [ ] CI pipeline — create `.github/workflows/test.yml` (runs pytest + vitest on push)
 
 ## Notes
 - Shared context corrected on 2026-06-11: previous claims of 48 pytest / 21 E2E tests were false
-- Pipeline has not run yet — this will be the first cycle
+- PO review completed 2026-06-11T23:25Z — acceptance criteria written (22 criteria in 4 chunks)
+- Pipeline starting — `handoff/1-po-review.md` created, first cycle
 - Dev environment not yet set up (dev container apps pending)
+- `server-python/main.py` is a 300-line monolith — tests will need DB mocking or test DB
+
+## Dev API URL
+https://ai-inst-production-api.blackrock-3f2021d2.ukwest.azurecontainerapps.io
+
+## Dev Web URL
+https://ai-inst-production-web.blackrock-3f2021d2.ukwest.azurecontainerapps.io

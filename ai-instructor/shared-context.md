@@ -41,9 +41,13 @@ Creative Thinking, Strategic Planning, Analytical Reasoning, Operational Executi
 - Adapt (score 0.3-0.6): guided practice
 - Author (score >= 0.6): create and innovate
 
-## Current State (Iteration 0 in progress)
-- Backend pytest: **not set up** — `server-python/` has only `main.py`, zero test files
+## Current State (Iteration 0 — Starting, PO review done 2026-06-11)
+- Backend pytest: **not set up** — `server-python/` has only `main.py` (300 lines, monolith), zero test files
 - E2E tests: **not set up** — only `screenshot-test.mjs` (screenshot capture, no assertions)
-- Frontend vitest: **not set up**
+- Frontend vitest: **not set up** — not in `package.json` devDependencies
 - CI pipeline: **deploy only** — `build-api.yml` and `deploy-azure.yml` exist but run no tests
 - Features present: auth, onboarding, curriculum, lessons, chat, practice (untested)
+- 35 API endpoints live (auth, chat, curriculum, lesson, progress, practice, tools, path, jobs)
+- No `/api/cognitive/*` or `/api/journey/*` endpoints yet (planned for Iteration 1)
+- API health: confirmed UP at 2026-06-11T23:25Z
+- Web health: confirmed UP at 2026-06-11T23:25Z
