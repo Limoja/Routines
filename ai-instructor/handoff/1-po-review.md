@@ -1,89 +1,81 @@
-# PO Review — 2026-06-11
+# PO Review — 2026-06-11 (Run 2)
 
 ## Current Iteration: 0 — Testing Foundation
-## Pipeline Status: starting
+## Pipeline Status: blocked
 
 ## Product Status
-- API Health: **UP** — `/api/health` returns `{"status":"ok"}` at 2026-06-11T23:25Z
+- API Health: **UP** — `/api/health` returns `{"status":"ok"}` at 2026-06-11T23:33Z
 - Web: **UP** — returns 200 OK
+- Auth endpoint verified: `POST /api/auth/signup` works end-to-end (returns JWT + user object)
 - 35 API endpoints live (auth, chat, curriculum, lesson, progress, practice, tools, path, jobs)
 - No `/api/cognitive/*` or `/api/journey/*` endpoints yet (expected — Iteration 1)
 - All existing features reportedly working (auth, onboarding, curriculum, lessons, chat, practice)
 
-## Critical Finding: Shared Context Is Inaccurate
-The `shared-context.md` claims **48 backend pytest tests** and **21 E2E tests passing** — these **do not exist**. The reviewer report (first run, 2026-06-11T23:02) confirmed:
+## Pipeline Status: No Progress Since Run 1
+This is the second PO run. The first PO review was written at 23:25Z. Since then:
+- **No Developer report** — `handoff/3-dev-report.md` does not exist
+- **No Tester report** — `handoff/4-test-report.md` does not exist
+- **No code changes** — project repo (`routine-team-ai` branch) has 0 new commits since `d3fa0c0`
+- **No test infrastructure created** — `server-python/tests/` still absent, no `scripts/e2e_test.sh`, no `vitest`, no `test.yml`
 
-| Claim in shared-context | Reality |
-|---|---|
-| Backend pytest: 48 tests passing | ❌ Zero test files in `server-python/`. Only `main.py` exists |
-| E2E tests: 21 tests passing | ❌ Only `screenshot-test.mjs` (screenshot capture, no assertions) |
-| Frontend vitest: not set up | ✅ Correct — not in `package.json` |
-| CI pipeline: not set up | ⚠️ Two CI workflows exist but only build+deploy, no test steps |
-
-**Action:** Updated `shared-context.md` to reflect actual state.
+**The pipeline is stalled.** Developer and Tester have not run. This review reaffirms the acceptance criteria from Run 1 to unblock the next cycle.
 
 ## Previous Work Review
 ### From Tester Report:
-- No test report exists — this is the first PO run, pipeline is cold
-### From Reviewer Report:
-- Pipeline has never been kicked off — no handoff files existed before this one
-- Repo state audited: `routine-team-ai` branch is identical to `main` (0 commits ahead)
-- No test infrastructure of any kind present
+- No test report exists — Tester has not run.
+### From Reviewer Report (23:02Z):
+- Confirmed repo state: zero test files, zero CI test steps
+- `routine-team-ai` identical to `main` (0 commits ahead)
+- Shared-context inaccuracies documented (now corrected)
+### Gaps Found (unchanged):
+1. No pytest suite — `server-python/tests/` does not exist
+2. No vitest — not in `package.json` devDependencies
+3. No E2E test script — `scripts/e2e_test.sh` does not exist
+4. No test CI workflow — `.github/workflows/test.yml` does not exist
 
-## Gaps Found (Iteration 0 vs Spec)
-1. **No pytest suite** — `server-python/tests/` does not exist. Implementation plan calls for 5 test files: `conftest.py`, `test_auth.py`, `test_curriculum.py`, `test_progress.py`, `test_health.py`, `test_chat.py`
-2. **No vitest** — not in `package.json` devDependencies. Plan calls for `setup.js`, `test_routing.test.jsx`, `test_auth_flow.test.jsx`
-3. **No E2E test script** — `scripts/e2e_test.sh` does not exist. Plan calls for curl-based signup→login→onboard→curriculum→lesson→progress flow
-4. **No test CI workflow** — `.github/workflows/test.yml` does not exist. Plan calls for pytest + vitest + e2e on every push
+## Acceptance Criteria for Iteration 0 (Reaffirmed from Run 1)
+**Priority order: backend tests first, then frontend, then E2E, then CI.**
 
-## Acceptance Criteria for Iteration 0 (Next Chunk)
-These are ordered by priority — backend tests first, then frontend, then E2E, then CI.
-
-### Chunk A: Backend pytest suite
-1. [ ] `server-python/tests/conftest.py` exists with shared fixtures (test DB, authenticated test client)
-2. [ ] `server-python/tests/test_health.py` — tests `GET /api/health` returns 200 with `{"status":"ok"}`
-3. [ ] `server-python/tests/test_auth.py` — tests signup, login, `/api/auth/me`, profile update, email verification, password reset (minimum 10 test functions)
-4. [ ] `server-python/tests/test_curriculum.py` — tests `GET /api/curriculum` and `PUT /api/curriculum` (authenticated)
-5. [ ] `server-python/tests/test_progress.py` — tests lesson completion, questions, and summary endpoints
-6. [ ] `server-python/tests/test_chat.py` — tests message sending, session listing, and history retrieval
-7. [ ] `pytest` runs cleanly from `server-python/` with all tests passing (target: 30+ tests)
-8. [ ] `pytest` is added to `server-python/requirements.txt`
+### Chunk A: Backend pytest suite (HIGHEST PRIORITY — do this first)
+1. [ ] `server-python/requirements.txt` includes `pytest` and `httpx`
+2. [ ] `server-python/tests/conftest.py` exists with shared fixtures (FastAPI `TestClient`, mock DB or test DB)
+3. [ ] `server-python/tests/test_health.py` — `GET /api/health` returns 200 with `{"status":"ok"}`
+4. [ ] `server-python/tests/test_auth.py` — signup returns token+user, login returns token, `/api/auth/me` with valid token returns user, profile update works, invalid credentials rejected (minimum 10 test functions)
+5. [ ] `server-python/tests/test_curriculum.py` — `GET /api/curriculum` returns data (authenticated), `PUT /api/curriculum` saves data (authenticated)
+6. [ ] `server-python/tests/test_progress.py` — lesson completion, questions, and summary endpoints work (authenticated)
+7. [ ] `server-python/tests/test_chat.py` — message sending, session listing, and history retrieval work (authenticated)
+8. [ ] `pytest` runs from `server-python/` with all tests passing (target: 30+ tests)
+9. [ ] Tests do NOT require live database — use mocking or test fixtures
 
 ### Chunk B: Frontend vitest harness
-9. [ ] `vitest` added to `package.json` devDependencies
-10. [ ] `src/tests/setup.js` exists with jsdom environment config
-11. [ ] `vitest.config.js` or `vite.config.js` updated with test configuration
-12. [ ] `src/tests/test_routing.test.jsx` — smoke test: all routes render correct components (minimum 5 route tests)
-13. [ ] `npm test` runs from repo root with all vitest tests passing
+10. [ ] `vitest` + `@testing-library/react` + `jsdom` added to `package.json` devDependencies
+11. [ ] `vitest.config.js` or `vite.config.js` includes test config with jsdom environment
+12. [ ] `src/tests/setup.js` exists
+13. [ ] `src/tests/test_routing.test.jsx` — smoke test: at least 5 routes render without crashing
+14. [ ] `npm test` runs from repo root with all vitest tests passing
 
 ### Chunk C: E2E test script
-14. [ ] `scripts/e2e_test.sh` exists and is executable
-15. [ ] Script tests full flow: signup → login → onboarding → curriculum → lesson → progress against live API
-16. [ ] Script exits 0 on all-pass, non-zero on any failure
-17. [ ] Script output shows pass/fail per step with clear labels
+15. [ ] `scripts/e2e_test.sh` exists and is executable (`chmod +x`)
+16. [ ] Script tests full flow: signup → login → onboarding → curriculum → lesson → progress against live API URL (configurable via env var `API_URL`)
+17. [ ] Script exits 0 on all-pass, non-zero on any failure
+18. [ ] Script output shows pass/fail per step with clear labels
 
 ### Chunk D: CI pipeline
-18. [ ] `.github/workflows/test.yml` exists
-19. [ ] Workflow triggers on push to `main` and `routine-team-ai` branches, and on PRs
-20. [ ] Workflow runs `pytest` in backend step
-21. [ ] Workflow runs `vitest` in frontend step
-22. [ ] Workflow runs E2E test against staging or uses service containers
+19. [ ] `.github/workflows/test.yml` exists
+20. [ ] Workflow triggers on push to `main` and `routine-team-ai` branches, and on PRs
+21. [ ] Workflow runs `pytest` in backend step
+22. [ ] Workflow runs `vitest` in frontend step
 
 ## Bugs to Fix
-- No bugs to report — existing features are functional. The gap is entirely missing test infrastructure.
+- No bugs found in existing features — API and web are functioning correctly.
+- The gap is **entirely missing test infrastructure**, not broken functionality.
 
 ## Iteration Status
-- Current iteration: **in-progress** (0% — none of the 4 checkboxes are actually complete)
-- Iteration 0 cannot advance until all 4 items are done
-- **Correction applied:** iteration.md progress checkboxes were erroneously marked as done for pytest and E2E — these are now correctly marked as incomplete
+- Current iteration: **in-progress** (0% — nothing built yet)
+- Cannot advance to Iteration 1 until all 4 Iteration 0 items are complete
+- **URGENT:** Pipeline must reach Developer this cycle. Developer should start with Chunk A immediately.
 
-## Priority Order for Developer
-1. **Backend pytest** (Chunks A) — highest value, covers the API layer that all future iterations depend on
-2. **Frontend vitest** (Chunk B) — second priority, needed before we add new pages in Iteration 1
-3. **E2E script** (Chunk C) — validates the full user journey end to end
-4. **CI pipeline** (Chunk D) — last, wraps everything into automated gate
-
-## Risks
-- `server-python/main.py` is a monolith (300 lines) — test fixtures may need careful setup for DB mocking
-- No separate database for testing — tests hitting production DB would be dangerous; developer should use a test DB or mocking
-- E2E script needs real credentials; should use test accounts, not modify production data
+## Decisions Needed
+1. **Test DB strategy** — Developer must decide: mock DB calls in tests, or spin up test PostgreSQL? Recommendation: **mock for speed and simplicity**. `server-python/main.py` is 300 lines — manageable to mock.
+2. **E2E target** — Should `e2e_test.sh` hit production API or local? Recommendation: **configurable via `API_URL` env var, default to production**.
+3. **Test accounts** — E2E tests need real credentials. Create test-specific accounts (e.g., `e2e-test-<timestamp>@test.com`).
