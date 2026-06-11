@@ -1,0 +1,5 @@
+{
+  "url": "https://ai-inst-production-api.blackrock-3f2021d2.ukwest.azurecontainerapps.io/api/health",
+  "response": {"status":"ok","timestamp":"2026-06-11T23:02:41.418829","runtime":"python"},
+  "checked_at": "2026-06-11T23:02:41Z"
+}

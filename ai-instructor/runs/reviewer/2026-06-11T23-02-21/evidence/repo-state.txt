@@ -1,0 +1,16 @@
+Git state at 2026-06-11T23:02:41Z
+
+routine-team-ai HEAD: d3fa0c0 (Remove old per-iteration routine specs)
+origin/main HEAD: d3fa0c0 (same commit)
+Branches: routine-team-ai is 0 commits ahead of main
+
+Test files found:
+- screenshot-test.mjs (Playwright-based E2E screenshot capture)
+- NO pytest test files in server-python/
+- NO vitest setup (vitest not in package.json devDependencies)
+- NO test runner scripts in package.json
+
+CI workflows:
+- .github/workflows/build-api.yml (build+push API image on main push)
+- .github/workflows/deploy-azure.yml (full deploy on azure-deploy branch push)
+- Neither workflow runs any tests
