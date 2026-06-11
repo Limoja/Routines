@@ -1,0 +1,24 @@
+{
+  "name": "routines",
+  "version": "1.0.0",
+  "description": "Autonomous development team routines. Each project has its own folder with configs, specs, and handoff files.",
+  "main": "trigger.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Limoja/Routines.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Limoja/Routines/issues"
+  },
+  "homepage": "https://github.com/Limoja/Routines#readme",
+  "dependencies": {
+    "@azure/cosmos": "^4.9.3",
+    "@azure/event-hubs": "^6.0.4"
+  }
+}

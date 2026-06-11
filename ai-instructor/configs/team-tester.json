@@ -1,0 +1,15 @@
+{
+  "name": "team-tester",
+  "agentId": "agent-team",
+  "role": "tester",
+  "inputHandoff": "handoff/3-dev-report.md",
+  "outputHandoff": "handoff/4-test-report.md",
+  "specRepo": "https://github.com/Limoja/AIInstructor.git",
+  "specBranch": "main",
+  "workBranch": "routine-team-ai",
+  "addDir": "/home/rafik/Routines",
+  "maxDurationMinutes": 45,
+  "devApiUrl": "https://ai-inst-production-api.blackrock-3f2021d2.ukwest.azurecontainerapps.io",
+  "devWebUrl": "https://ai-inst-production-web.blackrock-3f2021d2.ukwest.azurecontainerapps.io",
+  "prodApiUrl": "https://ai-inst-production-api.blackrock-3f2021d2.ukwest.azurecontainerapps.io"
+}

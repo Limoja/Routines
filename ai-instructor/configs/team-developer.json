@@ -1,0 +1,15 @@
+{
+  "name": "team-developer",
+  "agentId": "agent-team",
+  "role": "developer",
+  "inputHandoff": "handoff/2-design-plan.md",
+  "outputHandoff": "handoff/3-dev-report.md",
+  "specRepo": "https://github.com/Limoja/AIInstructor.git",
+  "specBranch": "main",
+  "workBranch": "routine-team-ai",
+  "addDir": "/home/rafik/Routines",
+  "maxDurationMinutes": 45,
+  "devApiUrl": "https://ai-inst-production-api.blackrock-3f2021d2.ukwest.azurecontainerapps.io",
+  "devWebUrl": "https://ai-inst-production-web.blackrock-3f2021d2.ukwest.azurecontainerapps.io",
+  "prodApiUrl": "https://ai-inst-production-api.blackrock-3f2021d2.ukwest.azurecontainerapps.io"
+}
