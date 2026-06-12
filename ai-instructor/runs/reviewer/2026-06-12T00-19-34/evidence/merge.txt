@@ -1,0 +1,14 @@
+## Merge evidence (2026-06-12)
+
+routine-team-ai → main merge at commit 6153092
+
+Commits merged (4):
+1. 06e73d8 feat(testing): add complete test infrastructure — Iteration 0
+2. 5252f0f developer: run 2026-06-11T23-45-47 (11m 51s)
+3. 7d0c613 test(iteration-0): add Playwright UI tests and curl-based web verification
+4. 8618a68 fix: exclude e2e/ from vitest, remove __pycache__ from git, update .gitignore
+
+Files changed: 19 files, +2008 lines, -3 lines
+Merge strategy: ort (no-ff)
+Conflicts: none
+Pushed to origin/main: 1f92f54..6153092

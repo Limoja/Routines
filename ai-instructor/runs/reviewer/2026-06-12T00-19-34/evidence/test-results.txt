@@ -1,0 +1,21 @@
+## Independent test verification by reviewer (2026-06-12T00:21Z)
+
+### pytest (backend)
+28 passed, 0 failed in 0.65s
+All tests use mocked DB (shared.db.query patch). No real DB needed.
+
+### vitest (frontend)
+6 passed, 0 failed in 4.01s
+Route smoke tests: Home, Login, Signup, About, Courses, NotFound
+
+### E2E (curl script against production)
+10/10 passing
+Steps: health → signup → login → profile → profile save → curriculum save → curriculum load → lesson complete → progress summary → chat sessions
+
+### Post-fix verification
+After reviewer fixes (vitest exclude e2e/, __pycache__ removal):
+- pytest: 28/28 ✅
+- vitest: 6/6 ✅
+- E2E: 10/10 ✅
+
+All three test suites clean.
