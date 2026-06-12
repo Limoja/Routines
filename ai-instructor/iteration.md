@@ -1,56 +1,23 @@
-# AI Instructor — Iteration Tracker
+# AI Instructor — Work Tracker
 
-## Current Iteration: 2
-## Status: pending
-## Title: Scenario Cards + AI Paths
+## Approach
+This project uses a **spec-driven, adaptive approach**. There is no fixed iteration roadmap. Each cycle:
+1. PO reads `docs/AIInstructor-MASTER-SPECIFICATION.md` and compares against current state
+2. PO identifies the biggest gap and writes acceptance criteria for the most impactful chunk
+3. Designer → Developer → Tester → Reviewer execute the chunk
+4. Repeat
 
-## Iteration History
+The master spec IS the roadmap. Everything in it must eventually be built.
 
-| # | Title | Status | Completed |
-|---|-------|--------|-----------|
-| 0 | Testing Foundation | **complete** | 2026-06-12 |
-| 1 | The Thinnest Loop | **complete** | 2026-06-12 |
-| 2 | Scenario Cards + AI Paths | pending | - |
-| 3 | Explore/Exploit Policy | pending | - |
-| 4 | Prompt Lab + Depth Selection | pending | - |
-| 5 | Reflection Cards + Law 3 | pending | - |
-| 6 | Navigation Overhaul | pending | - |
-| 7 | Discovery Polish | pending | - |
-| 8 | Server-Side Agent | pending | - |
-| 9 | Mastery Track + 3A | pending | - |
-| 10 | Practice Arena | pending | - |
-| 11 | Polish + Accessibility | pending | - |
-| 12 | Analytics + Final QA | pending | - |
+## Completed Work
+| Date | What Was Delivered | Key Changes |
+|------|-------------------|-------------|
+| 2026-06-12 | Testing Foundation | pytest (28 tests), vitest (6 tests), E2E script (10 steps), CI workflow |
+| 2026-06-12 | Thinnest Loop | Cognitive profile tables, /api/cognitive/*, /api/journey/*, Discovery.jsx, Learn.jsx |
 
-## Iteration 0 Progress (COMPLETE — merged 2026-06-12)
-- [x] Backend pytest suite — 28 tests passing (conftest + 5 test files)
-- [x] E2E test script — `scripts/e2e_test.sh` (10 steps, all passing against production)
-- [x] Frontend vitest — 6 route smoke tests passing
-- [x] CI pipeline — `.github/workflows/test.yml` (parallel pytest + vitest jobs)
-
-## Iteration 1 Progress (COMPLETE — merged 2026-06-12)
-- [x] DB migration: `cognitive_profiles` and `card_interactions` tables — migration run successfully
-- [x] `POST /api/cognitive/init` — create profile from 8 discovery responses
-- [x] `GET /api/cognitive/profile` — return user's cognitive profile
-- [x] `POST /api/journey/next` — return 3-card set targeting weakest dimension
-- [x] `POST /api/journey/outcomes` — submit outcomes, update profile, return reflection
-- [x] `src/pages/Discovery.jsx` — 8 behavioral scenario cards
-- [x] `src/pages/Learn.jsx` — challenge player (concept → question → summary)
-- [x] Routes: `/discover` and `/learn` added to App.jsx
-- [x] UserContext + api.js updated for cognitive/journey APIs
-- [x] Law compliance verified (Law 1, 2, 3)
-- [x] Tests: 16 new pytest + 5 E2E steps
-- [x] Existing tests (28 pytest, 6 vitest, 10 E2E) still pass — no regressions
-
-## Notes
-- Iteration 0 completed 2026-06-12 — merged to main at commit `6153092`
-- PO review for Iteration 1 written 2026-06-12T00:37Z — 42 acceptance criteria across 7 chunks
-- Backend-first: tables and endpoints must land before frontend wiring
-- Dimension keys: use `creative`, `strategic`, `analytical`, `operational`, `communication`, `detail`, `empathetic`, `technical` (master spec keys, NOT journeyEngine.js keys)
-- `journeyEngine.js` has scenario data to port but uses different key names (`detail_accuracy`, `technical_fluency`) — normalize
-- Old `/onboarding` route MUST still work — backward compatibility
-- Card generation is deliberately dumb in Iteration 1: always targets weakest, no explore/exploit, no LLM
-- `CognitiveRadar.jsx` already built and renders — wire to real server data
+## Current State
+- See `shared-context.md` for detailed current state
+- See `docs/AIInstructor-MASTER-SPECIFICATION.md` for the target state
 
 ## Dev API URL
 https://ai-inst-production-api.blackrock-3f2021d2.ukwest.azurecontainerapps.io
