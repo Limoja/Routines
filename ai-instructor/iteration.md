@@ -14,6 +14,7 @@ The master spec IS the roadmap. Everything in it must eventually be built.
 |------|-------------------|-------------|
 | 2026-06-12 | Testing Foundation | pytest (28 tests), vitest (6 tests), E2E script (10 steps), CI workflow |
 | 2026-06-12 | Thinnest Loop | Cognitive profile tables, /api/cognitive/*, /api/journey/*, Discovery.jsx, Learn.jsx |
+| 2026-06-12 | Route Restructure + Quality Bar | JourneyDashboard, Toast, ErrorBoundary, 401 redirect, 5-item navbar, route redirects |
 
 ## Current State
 - See `shared-context.md` for detailed current state

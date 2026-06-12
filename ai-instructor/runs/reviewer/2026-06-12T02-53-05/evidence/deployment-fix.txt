@@ -1,0 +1,40 @@
+## Dockerfile fix evidence (2026-06-12)
+
+### Root Cause
+The Dockerfile (lines 18-29) copies each Lambda handler directory individually:
+```
+COPY infra/lambda/auth/ ./auth/
+COPY infra/lambda/chat/ ./chat/
+... etc
+```
+
+Iteration 1 added `infra/lambda/cognitive/` and `infra/lambda/journey/` with new handlers,
+and `server-python/main.py` imports them:
+```python
+from cognitive.handler import handler as cognitive_handler
+from journey.handler import handler as journey_handler
+```
+
+But the Dockerfile was NEVER updated to include:
+```
+COPY infra/lambda/cognitive/ ./cognitive/
+COPY infra/lambda/journey/ ./journey/
+```
+
+Result: The deployed Docker container had NO cognitive/ or journey/ directories.
+Python import failed silently at module load, and the routes were never registered.
+All API calls to /api/cognitive/* and /api/journey/* returned 404.
+
+### Fix
+Added two lines to Dockerfile:
+```
+COPY infra/lambda/cognitive/ ./cognitive/
+COPY infra/lambda/journey/ ./journey/
+```
+
+### Verification Plan
+1. Push to azure-deploy triggers new build
+2. New image includes cognitive/ and journey/ dirs
+3. /api/cognitive/init returns 401 (not 404)
+4. /api/journey/next returns 401 (not 404)
+5. E2E steps 11-15 pass against production
