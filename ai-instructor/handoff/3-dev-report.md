@@ -1,71 +1,59 @@
 # Dev Report — 2026-06-12
 
 ## Based on Design Plan: 2026-06-12
-## Iteration: 1 — The Thinnest Loop
 
 ## Changes Made
 
 ### Backend
-- `infra/lambda/migrate/handler.py`: Appended DDL for `cognitive_profiles` (user_id PK, dimensions JSONB, journey_stage, total_interactions) and `card_interactions` (user_id FK, session_id, agent_prompt_id, card_id, card_type, option_selected, option_path, time_spent_ms)
-- `infra/lambda/cognitive/__init__.py`: Package marker
-- `infra/lambda/cognitive/handler.py`: `POST /api/cognitive/init` (validates 8 responses, creates profile, 409 on duplicate), `GET /api/cognitive/profile` (returns dimensions or 404)
-- `infra/lambda/cognitive/agent.py`: `_compute_initial_dimensions()` (option signal semantics per master spec), `find_weakest_dimension()`, `generate_card_set()` (concept→question→summary), `update_dimensions_from_outcomes()` (E.4 rules), `build_reflection()` (Law 3 flags)
-- `infra/lambda/cognitive/card_banks.py`: DISCOVERY_SCENARIOS (8 dimensions, 4 options each), CONCEPT_TEMPLATES, QUESTION_TEMPLATES, SUMMARY_TEMPLATES, DIMENSION_CONFIG
-- `infra/lambda/journey/__init__.py`: Package marker
-- `infra/lambda/journey/handler.py`: `POST /api/journey/next` (targets weakest, returns 3 cards), `POST /api/journey/outcomes` (idempotent via agent_prompt_id, inserts interactions, updates dimensions, returns reflection)
-- `server-python/main.py`: Added 4 route groups for cognitive and journey endpoints
+- No backend changes in this cycle (all 44 pytest pass unchanged)
 
 ### Frontend
-- `src/pages/Discovery.jsx`: 8 scenario cards with 4 options, progress indicator, CognitiveRadar reveal, "Start Learning" button
-- `src/pages/Discovery.css`: Dark gradient fullscreen layout
-- `src/pages/Learn.jsx`: Challenge player — concept (read) → question (interactive) → summary (read), time tracking, outcome submission, reflection display with Law 3 warnings, sidebar CognitiveRadar
-- `src/pages/Learn.css`: Two-column layout (sidebar radar + main card area), responsive
-- `src/api.js`: Added `cognitiveInit()`, `cognitiveProfile()`, `journeyNext()`, `journeyOutcomes()`
-- `src/App.jsx`: Added `/discover` and `/learn` routes with RequireAuth, added to FULLSCREEN_PATHS
-- `src/context/UserContext.jsx`: Server-first cognitive profile loading, added `discoverProfile()`, `getNextChallenge()`, `submitOutcomes()` to context
+- `src/components/Toast.jsx` + `Toast.css`: Global notification system with 4 types (success, error, warning, info), 4s auto-dismiss, max 5 queue
+- `src/components/ErrorBoundary.jsx`: React error boundary with friendly fallback and retry button
+- `src/main.jsx`: Added ErrorBoundary (outermost) and ToastProvider (innermost) wrappers
+- `src/api.js`: Dispatches `api:401` custom event on 401 responses for global auth redirect
+- `src/App.jsx`: Auth'd `/` → JourneyDashboard; 9 old routes redirect to new ones; global 401 listener
+- `src/components/Navbar.jsx`: Reduced to exactly 5 items: Home, Learn, Practice, Chat, Profile
+- `src/pages/JourneyDashboard.jsx` + `.css`: New home for auth'd users — discovery CTA or radar + challenge CTA
+- `src/pages/Home.jsx`: Updated copy to "Discover How YOU Think" framing, discovery-focused steps and CTAs
 
-### Tests
-- `server-python/tests/conftest.py`: Extended mock_query to cover cognitive.handler and journey.handler
-- `server-python/tests/test_cognitive.py`: 9 tests
-- `server-python/tests/test_journey.py`: 8 tests
-- `scripts/e2e_test.sh`: Added 5 new steps (11-15) for Iteration 1 flow
+### Bug Fixes
+- No bugs from test report (no `4-test-report.md` existed)
 
 ## Test Results
-- pytest: **44 passing**, 0 failing (28 existing + 16 new)
-- vitest: **6 passing**, 0 failing (no regressions)
-- E2E: **10/15 passing** (Iteration 0 steps pass; Iteration 1 steps fail — endpoints not yet deployed)
+- pytest: **44 passing**, 0 failing
+- vitest: **10 passing**, 0 failing (8 routing + 2 toast)
 
 ## Deployment
 - Branch: routine-team-ai
 - Dev API status: UP
-- Commit: `958d249` — feat(iteration-1): the thinnest loop — cognitive discovery + challenge system
-- **Note: New endpoints NOT yet deployed to production** — code needs to go through CI/CD and migration must be run
+- Commit: `44decf3` — feat(chunk-2): route restructure + JourneyDashboard + quality bar
+- **⚠️ NOT deployed to production** — deployment blocked by missing Docker/AZ CLI
 
 ## What's Ready to Test
-1. **Backend unit tests** — `cd server-python && python3 -m pytest tests/ -v` (44 tests, all pass, no DB needed)
-2. **`POST /api/cognitive/init`** — accepts 8 discovery responses, creates profile (once deployed + migrated)
-3. **`GET /api/cognitive/profile`** — returns 8 dimensions with scores/confidence (once deployed)
-4. **`POST /api/journey/next`** — returns 3-card set targeting weakest dimension (once deployed)
-5. **`POST /api/journey/outcomes`** — updates profile, inserts interactions, returns reflection with Law 3 flags (once deployed)
-6. **Frontend `/discover`** — 8 scenario cards (needs deployed backend)
-7. **Frontend `/learn`** — challenge player with radar sidebar (needs deployed backend)
+1. **Toast system** — import `useToast()`, call `.success("msg")` / `.error("msg")` etc.
+2. **ErrorBoundary** — wrap any component; render errors show friendly fallback
+3. **Global 401 redirect** — expired tokens trigger toast + redirect to `/login`
+4. **Route restructure** — 9 old routes redirect: `/onboarding→/discover`, `/dashboard→/`, `/curriculum→/learn`, etc.
+5. **Navbar** — exactly 5 items: Home, Learn, Practice, Chat, Profile
+6. **JourneyDashboard** — auth'd `/` shows radar + "Next Challenge" or "Start Discovery" CTA
+7. **Home page** — new copy: "Discover How YOU Think", discovery-focused CTAs
 
 ## Issues / Blockers
-- **Deployment pending**: New endpoints exist in code but are not deployed to production. E2E steps 11-15 will fail until CI/CD runs and migration is applied.
-- **Migration required**: `POST /api/migrate` must be called after deployment to create `cognitive_profiles` and `card_interactions` tables.
-- **Frontend tests**: Route smoke tests pass for existing routes. Discovery and Learn pages not yet covered by dedicated vitest tests (would need interactive testing library upgrade for React 19).
+- **DEPLOYMENT BLOCKED (P0)**: No Docker or Azure CLI in build environment. Iteration 1 code (commit `3f69f75`) and Chunk 2 code (commit `44decf3`) are both on `routine-team-ai` but NOT deployed. All new endpoints return 404 on production.
+- **DB migration pending**: `POST /api/migrate` must be called after deployment.
+- **Needs ops intervention**: Someone with Azure credentials must build images and update container apps.
 
 ## Implementation Status
-- [x] DB migration: `cognitive_profiles` and `card_interactions` tables
-- [x] `POST /api/cognitive/init` — create profile from 8 discovery responses
-- [x] `GET /api/cognitive/profile` — return user's cognitive profile
-- [x] `POST /api/journey/next` — return 3-card set targeting weakest dimension
-- [x] `POST /api/journey/outcomes` — submit outcomes, update profile, return reflection
-- [x] `src/pages/Discovery.jsx` — 8 behavioral scenario cards
-- [x] `src/pages/Learn.jsx` — challenge player (concept → question → summary)
-- [x] Routes: `/discover` and `/learn` added to App.jsx
-- [x] UserContext + api.js updated for cognitive/journey APIs
-- [x] Tests: 16 new pytest + E2E steps 11-15
-- [x] Existing tests (28 pytest, 6 vitest) still pass — no regressions
-- [ ] Deployment + migration to production (carried to next cycle / ops)
-- [ ] Frontend vitest for Discovery and Learn pages (carried to next cycle)
+- [x] Toast.jsx + Toast.css — global notification system (AC 14)
+- [x] ErrorBoundary.jsx — React error boundary (AC 15)
+- [x] api.js — 401 → custom event dispatch (AC 13)
+- [x] main.jsx — ErrorBoundary + ToastProvider wrapping
+- [x] App.jsx — route restructure with 9 redirects (AC 12)
+- [x] App.jsx — auth'd `/` renders JourneyDashboard (AC 11)
+- [x] App.jsx — global 401 → toast + redirect (AC 13)
+- [x] Navbar.jsx — reduced to 5 items (AC 10)
+- [x] JourneyDashboard.jsx — new home for auth'd users (AC 11)
+- [x] Home.jsx — updated copy and CTAs (per H.5 tone rules)
+- [x] Tests — 10 vitest passing, 44 pytest passing
+- [ ] **Chunk 1 deployment** — BLOCKED (no Docker/AZ CLI)
