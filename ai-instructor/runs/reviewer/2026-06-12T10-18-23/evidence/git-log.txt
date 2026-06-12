@@ -1,0 +1,7 @@
+0c9130e fix: add cognitive/ and journey/ handler dirs to Dockerfile
+3fa456d Merge routine-team-ai: Chunk 2 — Route restructure + JourneyDashboard + quality bar
+44decf3 feat(chunk-2): route restructure + JourneyDashboard + quality bar
+3f69f75 Merge routine-team-ai: Iteration 1 — The Thinnest Loop
+958d249 feat(iteration-1): the thinnest loop — cognitive discovery + challenge system
+---
+---FILES ABOVE (should be empty)---
