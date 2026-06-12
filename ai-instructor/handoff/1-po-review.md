@@ -1,129 +1,143 @@
-# PO Review — 2026-06-12
+# PO Review — 2026-06-12T12:48
+
+## Pipeline Reconciliation
+
+**Important context:** The Tester's report (`4-test-report.md`) marked everything as "FAIL — fictitious." This verdict was **premature** — the Tester ran before the Developer pushed commit `1fd64f0`. The Reviewer subsequently verified that all code exists, all 88 tests pass, and 37/37 ACs are met **in code**. However, **production testing reveals a critical runtime bug** that must be fixed before the agent intelligence chunk can be considered done.
+
+---
 
 ## Gap Analysis Summary
 
-Gap analysis against `docs/AIInstructor-MASTER-SPECIFICATION.md` (699 lines, v3.0). Compared every section to live production state + merged codebase.
-
 ### What's Working (matches spec):
 
-- **Auth system** (G.2): All 10 auth endpoints deployed and passing — signup, login, me, profile, verify, reset, resend, notification-preferences
-- **Chat service** (C.2): message, sessions, history, recommendations — deployed and working
-- **Practice service** (C.2): submit, history — working
-- **Testing infrastructure** (I.1): 44 pytest, 10 vitest, 15-step E2E script, CI workflow — all active
-- **Deployment** (B.1.3): ✅ RESOLVED — 39 endpoints now live in production (was 35)
-- **Cognitive profile API** (G.1): `POST /api/cognitive/init` and `GET /api/cognitive/profile` — deployed, verified working live
-- **Journey API** (G.1): `POST /api/journey/next` and `POST /api/journey/outcomes` — deployed, verified working live
-- **Discovery flow** (D Stage 2): 8 behavioral scenario cards → profile initialization → CognitiveRadar — code complete, deployed
-- **Learning loop** (D Stage 3): 3-card challenges (concept→question→summary) targeting weakest dimension, profile updates, reflections — live in production
-- **Route restructure** (H.1): 5-item navbar (Home, Learn, Practice, Chat, Profile), 10 old routes redirect to new equivalents
-- **JourneyDashboard** (H.1): Home page shows radar + next challenge CTA for auth'd users, discovery CTA when no profile
-- **Engineering quality** (B.3): Toast component (4 types, auto-dismiss), ErrorBoundary, global 401 → login redirect
-- **8 dimension keys** (A.4): Correct canonical names (`creative`, `strategic`, `analytical`, `operational`, `communication`, `detail`, `empathetic`, `technical`)
-- **Option semantics** (D Stage 2): 4 options map correctly to score signals per spec
-- **Cold start** (E.8): Universal 8-card discovery, role priors don't seed scores
-- **Law 1** (A.2): Concept templates emphasize human ownership
-- **Law 2** (A.2): Challenges target weakest dimension (complement weaknesses)
-- **Law 3 partial** (E.5): Flags `law3_violation` in reflection when full_outsource on dim > 0.6
-
-**✅ Full E2E loop verified in production**: signup → 8 discovery cards → cognitive profile → first challenge (3 cards targeting weakest) → outcomes → profile update → reflection → second challenge — all working live.
+- **Auth system** (G.2): All 10 auth endpoints — signup, login, me, profile, verify, reset, resend, notification-preferences — deployed and passing
+- **44 legacy endpoints** (G.2): health, auth, jobs, progress, lesson, practice, tools, path, chat — all green
+- **Cognitive profile** (F.1, G.1): `POST /api/cognitive/init` (8 discovery responses) and `GET /api/cognitive/profile` — deployed, working live ✅
+- **Cognitive summary** (G.1): `GET /api/cognitive/summary` — returns strengths/weaknesses/uncertain classification ✅ NEW DEPLOYED
+- **Journey stage** (G.1): `GET /api/journey/stage` — returns stage + mastery eligibility ✅ NEW DEPLOYED
+- **Discovery submission** (G.1): `POST /api/journey/discovery` — creates profile + reward state ✅ NEW DEPLOYED
+- **8 cognitive dimensions** (A.4): Correct canonical keys with score/confidence/samples/trend per dim ✅
+- **Cold start** (E.8): Universal 8-card discovery, role priors don't seed scores ✅
+- **Frontend routes** (H.1): Home, Login, Signup, Forgot/Reset Password, Verify Email, Discover, Learn, Practice, Chat — all render
+- **Route redirects** (H.1): `/onboarding→/discover`, `/dashboard→/`, `/curriculum*→/learn`, `/lesson/*→/learn`, `/epoch-lesson→/learn`, `/learning-path→/`, `/courses→/`, `/about→/`, `/tools→/`
+- **JourneyDashboard** (H.2): Home page shows radar + next challenge CTA for auth'd users ✅
+- **Discovery component** (D Stage 2): 8 scenario cards with 4 options each ✅
+- **Learn component** (H.3): ChallengePlayer renders concept → question → summary cards (3 of 9 spec'd types)
+- **Navbar**: 4 links (Home, Learn, Practice, Chat) — close to spec's 5 items
+- **ErrorBoundary + Toast** (B.3): Global error boundary, toast component for mutations ✅
+- **401 redirect** (B.3): Global 401 → login redirect ✅
+- **Agent intelligence code** (E.2–E.6): policy.py (214 lines, 8 functions), ingestion.py (162 lines, 7 functions) — all logic implemented ✅ CODE EXISTS
+- **88 pytest passing** (44 legacy + 44 new agent intelligence) — all green locally ✅
+- **10 vitest passing** ✅
+- **Database tables in migration** (F.1): `reward_function_state` + `agent_prompts` DDL present ✅
 
 ### What's Partial (exists but doesn't fully match spec):
 
-- **Agent logic** (E.1–E.2): Simplest agent only — always exploits (targets weakest), no explore/exploit ratio, no exploration queue. Spec E.2 requires dynamic ratio based on confidence.
-- **Outcome ingestion** (E.4): Basic score updates work. Missing: per-card-type update rules (scenario ±0.02–0.03, question +0.02/−0.01, prompt_lab weighted average α=min(0.3,1/(n+1))), trend computation (compare last 5 samples to prior 5).
-- **Law 3 enforcement** (E.5): Flags violation but doesn't (a) decrease score by 0.02, (b) force next challenge to target that dimension in preserve mode, (c) include explicit preserve message in reflection naming the dimension.
-- **Challenge cards** (H.3): Only 3 types (concept, question, summary). Spec requires 9 types (intro, concept, scenario, question, true_false, insight, prompt_lab, practice, summary/reflection) in 5–8 card challenges.
-- **CognitiveRadar** (H.4): Renders SVG but no confidence-as-opacity rendering, no trend ticks, no "Still discovering…" empty state.
-- **Reflection** (D Stage 3): Basic message returned from outcomes API, but no dedicated ReflectionCard component with owned/AI-helped/Law3 sections.
-- **Card engine** (E.7): No structured agent prompt JSON contract. Agent directly returns cards; spec requires agent→card engine separation via `agent_prompts` table.
-- **UserContext** (F.4): Server-first loading exists but `journeyEngine.js` client mock still imported; full migration not complete.
+- **Navbar**: 4 links — spec H.1 requires 5 (missing **Profile** link and `/profile` page)
+- **Card types**: 3 rendered (concept, question, summary) — spec H.3 requires 9 types
+- **Reflection**: generated inline as JSON, not a dedicated `ReflectionCard` component (spec H.2)
+- **Discovery signal mapping**: 8 cards with 4 options exist but exact ±0.02–0.10 values not verified against spec D Stage 2
+- **Agent prompts**: code creates `agent_prompts` rows but the 500 error prevents verifying the full flow
+- **Reward function state**: table exists in migration but never populated in production (500 blocks the flow)
+- **CognitiveRadar** (H.4): renders SVG but no confidence-as-opacity, no trend ticks, no "Still discovering…" empty state
 
 ### What's Missing (spec requires, nothing exists):
 
-- **Explore/exploit policy** (E.2): No `reward_function_state` table, no ratio logic (`explore_ratio = clamp(low_conf/total, 0.2, 0.5)`), no exploration queue, no dynamic shifts by journey stage.
-- **Depth selection / 3A** (E.3): No anchor/adapt/author logic. Score < 0.3 should produce Anchor content, 0.3–0.6 Adapt, ≥ 0.6 Author. Currently all challenges use the same depth.
-- **Anti-pigeon-holing** (E.6): No confidence ceiling (0.95), no decay (−0.01 per 14 days), no forced re-exploration every 25 interactions, no re-asking protocol.
-- **`reward_function_state` table** (F.1): Required for explore/exploit — stores weights, confidence_vector, exploration_queue.
-- **`agent_prompts` table** (F.1): Required for agent→card engine contract — stores mode, target_dimensions, preserve_dimensions, depth, cards_requested.
-- **3 API endpoints** (G.1): `GET /api/cognitive/summary` (strengths/weaknesses/uncertain summary), `POST /api/journey/discovery` (submit discovery answers), `GET /api/journey/stage` (current stage + mastery eligibility).
-- **ReflectionCard component** (H.2): Post-challenge behavioral insight card — "You owned X. AI helped with Y." + Law 3 callouts.
-- **ChallengePlayer** (H.3): Full player with 9 card types, keyboard navigation (←/→/1–4/Enter), exit-with-confirmation (partial outcomes saved), mobile-first.
-- **Landing page demo** (D Stage 1): No interactive cognitive demo on home page for visitors.
-- **Profile/settings page** (H.1): No `/profile` route — navbar "Profile" button goes to `/` (bug reported by tester).
-- **Playwright E2E** (I.1): Spec says Playwright replaces curl as primary E2E. Currently curl-based.
-- **Stage transitions** (D Stage 4): No mastery stage (avg confidence > 0.7 AND avg score > 0.5), no 3A paths.
+- **`/profile` route and page** — settings, cognitive radar, notifications, data export (spec H.1)
+- **6 card types**: scenario (4-option behavioral), true_false, insight, prompt_lab, practice, intro (spec H.3)
+- **ReflectionCard component** (spec H.2)
+- **CognitiveMapReveal component** — animated radar build after discovery (spec H.2)
+- **MasteryTrack component** (spec H.2)
+- **Landing page interactive demo** for visitors (spec D Stage 1)
+- **Keyboard navigation** (←/→/1–4/Enter) in card player (spec H.3)
+- **Progress dots** in card player (spec H.3)
+- **Mobile-first layout** (spec H.3)
+- **CI pipeline** testing on every push (spec I.1)
+- **E2E regression suite** covering 8 mandatory journeys (spec I.2)
+- **Practice Arena** agent-targeted unlimited practice (spec D Stage 4)
+- **LLM provider abstraction** via `shared/llm.py` (spec C.4)
 
 ### What's Broken:
 
-- **Navbar Profile link** (P2): Goes to `/` instead of `/profile` — no profile/settings page exists yet.
+- **🔴 P0: `POST /api/journey/next` returns 500 in production** — the core learning loop is completely broken. Users can complete discovery but CANNOT receive challenges. This is a regression from the agent intelligence merge — the endpoint worked before. Evidence: `runs/po/2026-06-12T12-48-52/evidence/production-api-check.json`
+  - Code logic works locally (verified by importing and running decide_mode/select_target_dimension in isolation)
+  - Migration was run (`POST /api/migrate` returned success, tables created)
+  - All other new endpoints (init, profile, summary, stage, discovery) return 200/400 correctly
+  - **Likely cause**: runtime error in the `agent_prompts` INSERT or `_get_or_create_reward_state` — UUID type casting, missing column, or query() parameter handling issue with the new tables
+
+---
 
 ## Priority: Next Chunk
 
-**Build the Agent Intelligence layer: explore/exploit policy, depth selection (3A), anti-pigeon-holing, and full outcome ingestion rules.**
+**Fix the `/api/journey/next` 500 error and verify the full agent intelligence loop works end-to-end in production.**
 
-Why this chunk: The agent is the product's core IP. Currently it's "always target weakest dimension with 3 identical cards" — a trivial agent. The spec (Part E) defines a sophisticated adaptive system with explore/exploit dynamics, per-dimension depth selection, confidence tracking, and anti-pigeon-holing safeguards. Building this transforms the product from a demo into a real adaptive learning platform. It also creates the `reward_function_state` and `agent_prompts` tables needed by all subsequent features. Backend-first: tables → agent math → endpoints → then frontend ChallengePlayer can use richer card sets.
+Why this chunk: The agent intelligence code was written (37/37 ACs in code, 88 tests green locally) but the core endpoint crashes at runtime. This is a P0 blocker — without `/api/journey/next`, users cannot receive challenges after discovery, and the entire learning loop is dead. Per spec rule B.1.5: "Never break the working loop." This loop was working before the agent intelligence merge; it must work again.
 
-This chunk covers: Parts E.2 (explore/exploit), E.3 (depth/3A), E.4 (full outcome ingestion), E.5 (complete Law 3), E.6 (anti-pigeon-holing), E.7 (agent prompt interface), F.1 (2 missing tables), G.1 (3 missing endpoints).
+This is not new feature work — it's debugging and deploying the existing agent intelligence code correctly.
+
+---
 
 ## Acceptance Criteria
 
-### Database: New Tables (Part F.1)
-1. [ ] [P1] `POST /api/migrate` creates `reward_function_state` table with columns: `user_id UUID PK`, `version INT DEFAULT 1`, `weights JSONB NOT NULL`, `confidence_vector JSONB NOT NULL`, `total_interactions INT DEFAULT 0`, `last_exploration TIMESTAMP`, `exploration_queue JSONB`, `computed_at TIMESTAMP DEFAULT now()`
-2. [ ] [P1] `POST /api/migrate` creates `agent_prompts` table with columns: `id UUID PK`, `user_id UUID FK`, `session_id UUID`, `mode VARCHAR`, `target_dimensions JSONB`, `preserve_dimensions JSONB`, `depth VARCHAR`, `epoch_skill VARCHAR`, `scenario_context JSONB`, `cards_requested JSONB`, `with_ai_paths BOOLEAN`, `generated_at TIMESTAMP DEFAULT now()`, `outcome_data JSONB`
-3. [ ] [P1] Migration is idempotent — existing `cognitive_profiles` and `card_interactions` tables unaffected
+### P0 — Fix the Broken Loop
 
-### Agent Core: Explore/Exploit (Part E.2)
-4. [ ] [P0] `find_weakest_dimension()` replaced by agent decision logic that computes `explore_ratio = clamp(low_confidence_dims / total_dims, 0.2, 0.5)` per E.2
-5. [ ] [P0] A dimension is "low confidence" when `confidence < 0.5 OR samples < 5` per E.2
-6. [ ] [P1] `reward_function_state` row created for each user on first interaction, with initial weights = dimension scores from cognitive profile
-7. [ ] [P1] Exploration queue maintained in `reward_function_state.exploration_queue`, ordered by lowest confidence first
-8. [ ] [P1] Mode selection per challenge: EXPLORE → generate scenario probes for low-confidence dims; EXPLOIT → target known weak dims
-9. [ ] [P1] Dynamic shift: early journey (total_interactions < 10) → more EXPLORE; mid → balanced; late → more EXPLOIT
+1. [ ] [P0] `POST /api/journey/next` returns 200 with a valid 3-card challenge set for a user with an initialized cognitive profile — no 500 error
+2. [ ] [P0] Response includes `mode` field ("explore" or "exploit") per spec E.2
+3. [ ] [P0] Response includes `depth` field ("anchor", "adapt", or "author") per spec E.3
+4. [ ] [P0] Response includes `agent_prompt_id` (UUID string) per spec E.7
+5. [ ] [P0] `agent_prompts` row is created in the database with mode, depth, target_dimensions, preserve_dimensions per spec F.1
+6. [ ] [P0] `reward_function_state` row is created (if not exists) when `/api/journey/next` is called per spec F.1
+7. [ ] [P0] `POST /api/journey/outcomes` returns 200 after completing a challenge — profile updates, reflection generated per spec E.4
+8. [ ] [P0] Full E2E loop verified in production: signup → init profile → get next challenge → submit outcomes → get second challenge (no 500 at any step)
+9. [ ] [P0] All 88 pytest tests still pass (no regressions)
 
-### Agent Core: Depth Selection / 3A (Part E.3)
-10. [ ] [P0] For the primary target dimension, depth is selected: `score < 0.3 → anchor`, `score < 0.6 → adapt`, `score ≥ 0.6 → author`
-11. [ ] [P1] `depth` field included in the `/api/journey/next` response and each card's content object
-12. [ ] [P1] Content templates vary by depth level: anchor = introduce concepts, adapt = guided practice, author = create & innovate
+### P0 — Law 3 Verification (code exists, verify it works in production)
 
-### Agent Core: Outcome Ingestion (Part E.4)
-13. [ ] [P0] Scenario card signals: option selected → score update ±0.02–0.03 per path mapping (D Stage 2), confidence +0.08 per sample
-14. [ ] [P0] Question card signals: correct → +0.02, incorrect → −0.01, confidence +0.05 per sample
-15. [ ] [P1] Prompt Lab card signals: weighted moving average, α = min(0.3, 1/(samples+1)), confidence +0.06 per sample
-16. [ ] [P1] Trend computation: compare mean of last 5 samples to prior 5; ±0.05 threshold → `improving`/`declining`, else `stable` per E.4
+10. [ ] [P0] When a user with a strong dimension (score > 0.6) submits a `full_outsource` outcome on a scenario card targeting that dimension, the score decreases by 0.02 per spec E.5
+11. [ ] [P0] The reflection response contains a `law3_flags` array identifying the violation per spec E.5
+12. [ ] [P0] The reflection response contains an explicit preserve message naming the dimension per spec E.5
 
-### Agent Core: Law 3 Full Enforcement (Part E.5)
-17. [ ] [P0] When `option_path == "full_outsource"` AND target dimension `score > 0.6`: score for that dimension decreases by 0.02 (not just flag)
-18. [ ] [P0] The **next** generated challenge targets that dimension in preserve mode (reinforcement content)
-19. [ ] [P0] Reflection contains explicit preserve message naming the dimension: "You're great at {dim} — don't outsource your superpower"
-20. [ ] [P0] Event logged in `card_interactions.cognitive_signal` with `law3_violation: true`
+### P1 — Agent Intelligence Verification
 
-### Anti-Pigeon-Holing (Part E.6)
-21. [ ] [P1] Confidence ceiling: confidence caps at 0.95 — agent never becomes certain
-22. [ ] [P1] Forced re-exploration: every 25 interactions, at least one explore-mode challenge regardless of ratio
-23. [ ] [P1] Declining trends on strong dimensions raise that dimension in the exploration queue (Law 1 watch)
+13. [ ] [P1] For a fresh user (all dims confidence < 0.5), `/api/journey/next` returns mode="explore" per spec E.2
+14. [ ] [P1] After 10+ interactions with improving scores, mode shifts toward "exploit" per spec E.2 dynamic shift
+15. [ ] [P1] `GET /api/cognitive/summary` returns correct strengths/weaknesses/uncertain after outcomes submitted per spec G.1
+16. [ ] [P1] `GET /api/journey/stage` returns "discovery" (0 interactions) → "growth" (after outcomes) per spec G.1
+17. [ ] [P1] Depth selection matches spec E.3: score < 0.3 → anchor, 0.3–0.6 → adapt, ≥ 0.6 → author
 
-### New API Endpoints (Part G.1)
-24. [ ] [P1] `GET /api/cognitive/summary` — authenticated. Returns readable strengths (top 3), weaknesses (bottom 2), uncertain dims (confidence < 0.5) summary
-25. [ ] [P1] `GET /api/journey/stage` — authenticated. Returns current `journey_stage` and mastery eligibility (`avg(confidence) > 0.7 AND avg(score) > 0.5`)
-26. [ ] [P2] `POST /api/journey/discovery` — authenticated. Alternative entry point that accepts discovery card answers and initializes profile (replacing the cognitive/init flow for discovery specifically)
+### P2 — Frontend Integration
 
-### Agent Prompt Interface (Part E.7)
-27. [ ] [P1] Each `/api/journey/next` call creates an `agent_prompts` row with the full decision context: mode, target_dimensions, preserve_dimensions, depth, cards_requested, scenario_context
-28. [ ] [P1] `agent_prompt_id` in the response maps to the `agent_prompts.id` row — enables traceability from outcomes back to agent decisions
+18. [ ] [P2] Learn.jsx displays the `mode` from challenge response (even as a small badge)
+19. [ ] [P2] Learn.jsx displays the `depth` from challenge response
 
-### Testing
-29. [ ] [P0] New pytest tests for explore/exploit logic: test that low-confidence dims get explore-mode challenges; high-confidence weak dims get exploit-mode (per I.2 journey #4)
-30. [ ] [P0] New pytest tests for depth selection: profiles at 0.2/0.45/0.7 produce anchor/adapt/author challenges (per I.2 journey #5)
-31. [ ] [P0] New pytest tests for Law 3 full enforcement: seed strong dim → select full_outsource → assert score drop, preserve reflection, next challenge targets that dim (per I.2 journey #3)
-32. [ ] [P1] New pytest tests for anti-pigeon-holing: confidence ceiling, forced re-exploration at 25 interactions
-33. [ ] [P1] New pytest tests for outcome ingestion: verify exact score updates per card type match E.4 rules
-34. [ ] [P1] All existing tests (44 pytest, 10 vitest, 15 E2E) still pass — no regressions
-
-### Spec compliance verification
-35. [ ] [P1] `reward_function_state.exploration_queue` correctly ordered by lowest confidence
-36. [ ] [P1] After outcome submission, `reward_function_state.weights` updated to match current profile scores
-37. [ ] [P1] `/api/journey/next` response includes `mode` field (either "explore" or "exploit")
+---
 
 ## Bugs to Fix
-- **Navbar Profile link** (P2): Goes to `/` instead of `/profile`. No profile page exists yet. Will be resolved when `/profile` route is built in a future chunk.
-- **`__pycache__` in git** (P2): Should add to `.gitignore` and `git rm --cached`.
+
+### Bug 1 (P0 CRITICAL): `/api/journey/next` returns 500
+
+- **Reproduction**: Create user → `POST /api/cognitive/init` with 8 responses → `POST /api/journey/next` → 500 Internal Server Error
+- **Impact**: The entire learning loop is broken. No user can receive challenges after discovery.
+- **Evidence**: `runs/po/2026-06-12T12-48-52/evidence/production-api-check.json` — shows all other endpoints (init, profile, summary, stage) return 200 while `journey_next` returns 500
+- **Suggested investigation**:
+  1. Add detailed error logging to `_handle_next()` in `infra/lambda/journey/handler.py` — the current `except Exception` block calls `server_error()` but swallows the stack trace. Print the full traceback.
+  2. Check if the `query()` function handles UUID string parameters for the `agent_prompts` INSERT — the `id` column is `UUID` but `generate_card_set()` returns `str(uuid.uuid4())`
+  3. Verify `preserve_target` column exists in `reward_function_state` table (added in migration DDL but may not have been applied correctly)
+  4. Check PostgreSQL JSONB auto-casting with the `query()` helper for nested JSON objects
+  5. Add a targeted pytest: `test_journey_next_with_real_profile()` that mocks only the DB layer, not the agent logic, to isolate whether it's a DB issue
+  6. Check if `generate_card_set()` returns `depth` in its output dict AND the handler also adds `depth` — there could be a key collision or the card set dict structure changed
+
+### Bug 2 (P1): Pipeline coordination — Tester ran before Dev pushed
+
+- The Tester's report marked 37/37 ACs as "NOT TESTED" and called the dev report "fictitious." The code actually exists and passes all tests. The Tester pulled before the Developer pushed.
+- **Fix**: Pipeline should enforce that Tester pulls latest code before running. Or Developer should push before handing off to Tester.
+
+---
+
+## Tester's Previous Report Assessment
+
+The Tester's report (`4-test-report.md`) found **0 regressions** (44 pytest + 10 vitest unchanged) — correctly, because no code existed at test time. The "FAIL — entirely fictitious" verdict was based on incomplete information. The Reviewer confirmed the code was pushed afterward and all claims verified in code.
+
+However, the Tester's instinct to verify against production was correct — the 500 error proves that while the code is logically sound, the production deployment has a runtime issue. The Tester should re-run against the fixed deployment.
+
+**Next Tester should focus on**: Production E2E of the fixed `/api/journey/next` (ACs 1–19), Law 3 enforcement chain (ACs 10–12), and agent intelligence feature validation (ACs 13–17).

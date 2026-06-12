@@ -44,25 +44,48 @@ Creative Thinking, Strategic Planning, Analytical Reasoning, Operational Executi
 - Adapt (score 0.3-0.6): guided practice
 - Author (score >= 0.6): create and innovate
 
-## Current State (2026-06-12 — deployed, core loop working)
-- **DEPLOYED**: 39 API endpoints live in production (35 legacy + 4 new cognitive/journey)
-- **Full E2E loop verified in production**: signup → 8 discovery cards → cognitive profile → challenge (3 cards) → outcomes → profile update → reflection → next challenge
+## Current State (2026-06-12T12:48 — P0 BLOCKER: learning loop broken)
+
+### Critical Issue
+- **🔴 `POST /api/journey/next` returns 500 in production** — the core learning loop is broken. Users can complete discovery but CANNOT receive challenges. This is a regression from the agent intelligence merge. All other endpoints work.
+
+### What's Deployed
+- **42 API endpoints** in production (35 legacy + 3 new cognitive/journey + 4 previously deployed)
+- New endpoints confirmed working: `GET /api/cognitive/summary`, `GET /api/journey/stage`, `POST /api/journey/discovery`
+- Broken endpoint: `POST /api/journey/next` (500), `POST /api/journey/outcomes` (likely broken too, depends on next)
 - Completed chunks: Testing Foundation, Thinnest Loop, Route Restructure + Quality Bar
-- Backend pytest: **44 tests passing** (auth: 13, cognitive: 9, journey: 8, curriculum: 4, progress: 5, chat: 5, health: 1)
+- Agent intelligence code merged (commit `1fd64f0`) but has runtime bug
+
+### Test Status
+- Backend pytest: **88 tests passing** (44 legacy + 44 new agent intelligence) — all green locally
 - Frontend vitest: **10 tests passing** (6 route smokes + 4 toast/redirect)
 - E2E (Iter 0): **10/10 passing** against production
-- E2E (Iter 1): **0/5 — needs re-test** (endpoints NOW deployed, but E2E script not re-run since deployment)
 - CI pipeline: **active** — `.github/workflows/test.yml`
-- **Agent is minimal**: always exploits (targets weakest), no explore/exploit, no depth selection, simplified outcome rules
-- **Missing tables**: `agent_prompts`, `reward_function_state` (needed for agent intelligence)
-- **Missing endpoints**: `/api/cognitive/summary`, `/api/journey/discovery`, `/api/journey/stage`
-- **Missing components**: ReflectionCard, full ChallengePlayer (9 card types), profile page, landing demo
-- API health: confirmed UP at 2026-06-12T09:25Z
-- Web health: confirmed UP at 2026-06-12T09:25Z
+
+### Agent Intelligence (code exists, production broken)
+- **Explore/exploit policy** (E.2): Implemented in `policy.py` — dynamic ratio, mode decision, forced re-exploration ✅ CODE
+- **Depth selection / 3A** (E.3): anchor/adapt/author with depth-variant templates ✅ CODE
+- **Outcome ingestion** (E.4): per-card-type rules with correct score deltas ✅ CODE
+- **Law 3 full enforcement** (E.5): score -0.02, preserve target, preserve message ✅ CODE
+- **Anti-pigeon-holing** (E.6): confidence ceiling 0.95, forced re-exploration at 25 ✅ CODE
+- **New tables** (F.1): `reward_function_state`, `agent_prompts` — in migration DDL, migration run ✅
+- **BUT**: None of this works in production because `/api/journey/next` crashes
+
+### Still Missing
+- **`/profile` page** (spec H.1) — no route, no component
+- **6 card types** (spec H.3): scenario, true_false, insight, prompt_lab, practice, intro
+- **ReflectionCard component** (spec H.2)
+- **CognitiveMapReveal** (spec H.2)
+- **MasteryTrack** (spec H.2)
+- **Profile page** (spec H.1)
+- **LLM abstraction** `shared/llm.py` (spec C.4)
+
+- API health: confirmed UP at 2026-06-12T12:49Z
+- Web health: confirmed UP at 2026-06-12T12:49Z
 
 ## Biggest Gaps vs Master Spec
-- **Agent intelligence** (Part E): No explore/exploit, no depth/3A, no anti-pigeon-holing, simplified outcomes — the core IP is missing
-- **Missing tables** (Part F.1): `agent_prompts`, `reward_function_state`
-- **Missing endpoints** (Part G.1): cognitive/summary, journey/discovery, journey/stage
-- **ChallengePlayer** (Part H.3): Only 3 card types, spec requires 9
-- **Profile page** (Part H.1): Navbar Profile goes to `/` — no settings/profile page
+1. **🔴 P0: `/api/journey/next` returns 500** — learning loop broken in production
+2. **ChallengePlayer** (Part H.3): Only 3 card types, spec requires 9
+3. **Profile page** (Part H.1): No `/profile` route or component
+4. **ReflectionCard** (Part H.2): No dedicated component
+5. **CI E2E regression** (Part I.2): No Playwright E2E suite covering 8 mandatory journeys

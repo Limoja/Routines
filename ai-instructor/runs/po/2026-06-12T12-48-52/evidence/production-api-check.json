@@ -1,0 +1,97 @@
+{
+  "health": {
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "timestamp": "2026-06-12T12:59:22.580118",
+      "runtime": "python"
+    }
+  },
+  "signup": {
+    "status": 200
+  },
+  "cognitive_init": {
+    "status": 200
+  },
+  "cognitive_profile": {
+    "status": 200,
+    "dims": [
+      "detail",
+      "creative",
+      "strategic",
+      "technical",
+      "analytical",
+      "empathetic",
+      "operational",
+      "communication"
+    ]
+  },
+  "cognitive_summary": {
+    "status": 200,
+    "body": {
+      "strengths": [
+        {
+          "key": "strategic",
+          "label": "Strategic Planning",
+          "score": 0.7000000000000002
+        }
+      ],
+      "weaknesses": [],
+      "uncertain": [
+        {
+          "key": "creative",
+          "label": "Creative Thinking",
+          "confidence": 0.22999999999999998
+        },
+        {
+          "key": "strategic",
+          "label": "Strategic Planning",
+          "confidence": 0.22999999999999998
+        },
+        {
+          "key": "analytical",
+          "label": "Analytical Reasoning",
+          "confidence": 0.22999999999999998
+        },
+        {
+          "key": "operational",
+          "label": "Operational Execution",
+          "confidence": 0.22999999999999998
+        },
+        {
+          "key": "communication",
+          "label": "Communication",
+          "confidence": 0.22999999999999998
+        },
+        {
+          "key": "detail",
+          "label": "Detail Accuracy",
+          "confidence": 0.22999999999999998
+        },
+        {
+          "key": "empathetic",
+          "label": "Empathetic Intelligence",
+          "confidence": 0.22999999999999998
+        },
+        {
+          "key": "technical",
+          "label": "Technical Fluency",
+          "confidence": 0.22999999999999998
+        }
+      ]
+    }
+  },
+  "journey_stage": {
+    "status": 200,
+    "body": {
+      "stage": "discovery",
+      "mastery_eligible": false,
+      "avg_confidence": 0.23,
+      "avg_score": 0.588
+    }
+  },
+  "journey_next": {
+    "status": 500,
+    "body": "Internal Server Error"
+  }
+}
