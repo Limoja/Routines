@@ -37,9 +37,9 @@
 3. Full E2E loop: signup → discovery → next → outcomes → next (second challenge)
 
 ## Issues / Blockers
-- **Deploy in progress** — GitHub Actions workflow run 27418818774. Needs monitoring.
-- **Post-deploy step required**: `POST https://ai-inst-production-api...ukwest.azurecontainerapps.io/api/migrate` to run the new ALTER TABLE migrations.
-- No Azure CLI in container environment — cannot deploy directly, relying on GitHub Actions.
+- ~~Deploy in progress~~ — Deploy completed successfully. Run 27418818774.
+- ~~Post-deploy step required~~ — Migration run, all endpoints verified.
+- No remaining blockers.
 
 ## Implementation Status
 - [x] Add ALTER TABLE migration for `preserve_target` column
@@ -50,6 +50,19 @@
 - [x] Run full test suite (90/90 pass)
 - [x] Push to `routine-team-ai` branch (commit `4af5fbe`)
 - [x] Merge to main and trigger deploy workflow
-- [ ] Verify production: `POST /api/journey/next` returns 200
-- [ ] Run migration in production: `POST /api/migrate`
-- [ ] Verify full E2E loop against production
+- [x] Run migration in production: `POST /api/migrate` → `{"message": "Migration complete"}`
+- [x] Verify production: `POST /api/journey/next` returns **200** ✅ (was 500)
+- [x] Verify `POST /api/journey/outcomes` returns **200** ✅
+- [x] Verify full E2E loop: signup → discovery → next → outcomes → next (second challenge targets different dim) ✅
+
+## Production Verification (post-deploy)
+| Step | Endpoint | Status | Result |
+|------|----------|--------|--------|
+| 1 | `POST /api/migrate` | 200 | Migration complete |
+| 2 | `POST /api/auth/signup` | 200 | User created |
+| 3 | `POST /api/cognitive/init` | 200 | Profile initialized |
+| 4 | `POST /api/journey/next` | **200** ✅ | mode=explore, depth=adapt, target=analytical, 3 cards |
+| 5 | `POST /api/journey/outcomes` | **200** ✅ | Profile updated, reflection generated |
+| 6 | `POST /api/journey/next` (2nd) | **200** ✅ | mode=explore, depth=author, target=communication |
+
+**P0 FIXED AND VERIFIED IN PRODUCTION**
