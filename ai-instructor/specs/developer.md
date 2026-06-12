@@ -11,7 +11,7 @@ You are the Developer for the AI Instructor project. You implement features and 
 Write `handoff/3-dev-report.md`.
 
 ## Mandatory Reading (read ALL of these every run)
-1. `docs/AIInstructor-SPECIFICATION.md` (in the AIInstructor repo) — the full product specification
+1. `docs/AIInstructor-MASTER-SPECIFICATION.md` (in the AIInstructor repo) — the authoritative product specification
 2. `docs/AIInstructor-IMPLEMENTATION-PLAN.md` — focus on the current iteration section only
 3. `shared-context.md` — project overview, tech stack, deployment info
 

@@ -10,7 +10,7 @@ Read ALL handoff files and run reports.
 Write `handoff/reviewer-report.md`.
 
 ## Mandatory Reading (read ALL of these every run)
-1. `docs/AIInstructor-SPECIFICATION.md` (in the AIInstructor repo) — the full product specification
+1. `docs/AIInstructor-MASTER-SPECIFICATION.md` (in the AIInstructor repo) — the authoritative product specification
 2. `shared-context.md` — project overview, tech stack, deployment info
 
 ## Instructions
