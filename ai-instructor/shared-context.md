@@ -3,12 +3,15 @@
 ## Project
 AI-powered adaptive learning platform. IRL agent discovers each user's cognitive profile and generates adaptive content.
 
+## Authoritative Specification
+`docs/AIInstructor-MASTER-SPECIFICATION.md` (in the AIInstructor repo) — 699-line unified spec covering purpose, architecture, data model, API, frontend, testing, and iteration roadmap. ALL work must conform to this document.
+
 ## Tech Stack
 - Frontend: React 19 + Vite
 - Backend: Python FastAPI
 - Database: PostgreSQL
 - Knowledge Graph: FalkorDB
-- LLM: MiniMax
+- LLM: MiniMax (provider-abstracted by Iteration 8)
 - Testing: pytest, vitest, Playwright
 
 ## Repos
