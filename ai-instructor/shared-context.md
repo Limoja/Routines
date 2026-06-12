@@ -25,11 +25,11 @@ AI-powered adaptive learning platform. IRL agent discovers each user's cognitive
 - ACR: pamousk.azurecr.io/ai-instructor-api, ai-instructor-web
 
 ## Key Docs (in AIInstructor repo)
-- docs/AIInstructor-IMPLEMENTATION-PLAN.md — 12 iterations with architecture diagrams
-- docs/AIInstructor-SPECIFICATION.md — Full target-state spec
-- docs/AIInstructor-Revised-Architecture.md — IRL agent architecture
-- docs/AIInstructor-Target-User-Journey.md — UX target
-- docs/AIInstructor-UX-Review.md — 34 UX issues
+- **docs/AIInstructor-MASTER-SPECIFICATION.md — AUTHORITATIVE SPEC** (699 lines, the single source of truth)
+- docs/AIInstructor-SPECIFICATION.md — Superseded by master spec
+- docs/AIInstructor-IMPLEMENTATION-PLAN.md — Reference only (architecture diagrams), NOT a fixed roadmap
+- docs/AIInstructor-Revised-Architecture.md — IRL agent architecture (consolidated into master spec)
+- docs/AIInstructor-UX-Review.md — Quality bar (consolidated into master spec Part B.3)
 
 ## 8 Cognitive Dimensions
 Creative Thinking, Strategic Planning, Analytical Reasoning, Operational Execution, Communication, Detail Accuracy, Empathetic Intelligence, Technical Fluency
