@@ -44,13 +44,17 @@ Creative Thinking, Strategic Planning, Analytical Reasoning, Operational Executi
 - Adapt (score 0.3-0.6): guided practice
 - Author (score >= 0.6): create and innovate
 
-## Current State (Iteration 0 — Starting, PO review done 2026-06-11)
-- Backend pytest: **not set up** — `server-python/` has only `main.py` (300 lines, monolith), zero test files
-- E2E tests: **not set up** — only `screenshot-test.mjs` (screenshot capture, no assertions)
-- Frontend vitest: **not set up** — not in `package.json` devDependencies
-- CI pipeline: **deploy only** — `build-api.yml` and `deploy-azure.yml` exist but run no tests
-- Features present: auth, onboarding, curriculum, lessons, chat, practice (untested)
+## Current State (Iteration 1 — Starting, PO review done 2026-06-12)
+- Iteration 0 **COMPLETE** — merged 2026-06-12, commit `6153092`
+- Backend pytest: **28 tests passing** (auth: 13, curriculum: 4, progress: 5, chat: 5, health: 1)
+- E2E tests: **10 steps passing** (`scripts/e2e_test.sh` against production)
+- Frontend vitest: **6 route smoke tests passing**
+- CI pipeline: **active** — `.github/workflows/test.yml` (parallel pytest + vitest jobs)
+- Features present: auth, onboarding, curriculum, lessons, chat, practice (all tested)
 - 35 API endpoints live (auth, chat, curriculum, lesson, progress, practice, tools, path, jobs)
-- No `/api/cognitive/*` or `/api/journey/*` endpoints yet (planned for Iteration 1)
-- API health: confirmed UP at 2026-06-11T23:25Z
-- Web health: confirmed UP at 2026-06-11T23:25Z
+- **No `/api/cognitive/*` or `/api/journey/*` endpoints yet** — Iteration 1 scope
+- **No `Discovery.jsx` or `Learn.jsx` yet** — Iteration 1 scope
+- `journeyEngine.js` (636 lines) exists as client-side mock — scenario data to be ported server-side
+- `CognitiveRadar.jsx` component exists and renders — ready to wire to real data
+- API health: confirmed UP at 2026-06-12T00:37Z
+- Web health: confirmed UP at 2026-06-12T00:37Z
