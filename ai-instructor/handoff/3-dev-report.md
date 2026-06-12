@@ -30,7 +30,7 @@
 - vitest: **10 passing** (no frontend changes)
 
 ## Deployment
-- Branch: routine-team-ai (commit `062d6fd`)
+- Branch: routine-team-ai (commit `1fd64f0`)
 - Dev API status: UP ✅
 - **Migration required**: `POST /api/migrate` to create `reward_function_state` and `agent_prompts` tables
 
