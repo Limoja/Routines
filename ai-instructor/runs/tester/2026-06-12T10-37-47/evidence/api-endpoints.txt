@@ -1,0 +1,12 @@
+=== API Health ===
+{"status":"ok","timestamp":"2026-06-12T10:41:12.942844","runtime":"python"}
+HTTP 200
+=== /api/cognitive/summary ===
+{"detail":"Not Found"}
+HTTP 404
+=== /api/journey/stage ===
+{"detail":"Not Found"}
+HTTP 404
+=== POST /api/journey/discovery ===
+{"detail":"Not Found"}
+HTTP 404
