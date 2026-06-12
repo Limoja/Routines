@@ -1,0 +1,125 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.2, pytest-9.0.3, pluggy-1.6.0 -- /usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /tmp/routine-team-developer
+plugins: anyio-4.13.0
+collecting ... collected 90 items
+
+server-python/tests/test_agent_policy.py::test_explore_ratio_low_confidence PASSED [  1%]
+server-python/tests/test_agent_policy.py::test_explore_ratio_all_confident PASSED [  2%]
+server-python/tests/test_agent_policy.py::test_explore_mode_targets_lowest_confidence PASSED [  3%]
+server-python/tests/test_agent_policy.py::test_exploit_mode_targets_weakest_score PASSED [  4%]
+server-python/tests/test_agent_policy.py::test_depth_anchor PASSED       [  5%]
+server-python/tests/test_agent_policy.py::test_depth_adapt PASSED        [  6%]
+server-python/tests/test_agent_policy.py::test_depth_author PASSED       [  7%]
+server-python/tests/test_agent_policy.py::test_early_journey_biased_explore PASSED [  8%]
+server-python/tests/test_agent_policy.py::test_confidence_ceiling_095 PASSED [ 10%]
+server-python/tests/test_agent_policy.py::test_forced_re_exploration_at_25 PASSED [ 11%]
+server-python/tests/test_agent_policy.py::test_update_exploration_queue_basic PASSED [ 12%]
+server-python/tests/test_agent_policy.py::test_update_exploration_queue_declining_strong_first PASSED [ 13%]
+server-python/tests/test_agent_policy.py::test_preserve_dimensions PASSED [ 14%]
+server-python/tests/test_agent_policy.py::test_law3_preserve_override PASSED [ 15%]
+server-python/tests/test_auth.py::test_signup_success PASSED             [ 16%]
+server-python/tests/test_auth.py::test_signup_missing_email PASSED       [ 17%]
+server-python/tests/test_auth.py::test_signup_missing_password PASSED    [ 18%]
+server-python/tests/test_auth.py::test_signup_short_password PASSED      [ 20%]
+server-python/tests/test_auth.py::test_signup_duplicate_email PASSED     [ 21%]
+server-python/tests/test_auth.py::test_login_success PASSED              [ 22%]
+server-python/tests/test_auth.py::test_login_wrong_password PASSED       [ 23%]
+server-python/tests/test_auth.py::test_login_nonexistent_user PASSED     [ 24%]
+server-python/tests/test_auth.py::test_me_with_valid_token PASSED        [ 25%]
+server-python/tests/test_auth.py::test_me_without_token PASSED           [ 26%]
+server-python/tests/test_auth.py::test_profile_update PASSED             [ 27%]
+server-python/tests/test_auth.py::test_verify_email_valid_token PASSED   [ 28%]
+server-python/tests/test_auth.py::test_verify_email_invalid_token PASSED [ 30%]
+server-python/tests/test_chat.py::test_list_sessions PASSED              [ 31%]
+server-python/tests/test_chat.py::test_get_history PASSED                [ 32%]
+server-python/tests/test_chat.py::test_get_history_missing_session PASSED [ 33%]
+server-python/tests/test_chat.py::test_send_message PASSED               [ 34%]
+server-python/tests/test_chat.py::test_send_message_empty PASSED         [ 35%]
+server-python/tests/test_cognitive.py::test_init_profile_success PASSED  [ 36%]
+server-python/tests/test_cognitive.py::test_init_profile_already_exists PASSED [ 37%]
+server-python/tests/test_cognitive.py::test_init_profile_unauthenticated PASSED [ 38%]
+server-python/tests/test_cognitive.py::test_init_wrong_response_count PASSED [ 40%]
+server-python/tests/test_cognitive.py::test_get_profile_success PASSED   [ 41%]
+server-python/tests/test_cognitive.py::test_get_profile_not_found PASSED [ 42%]
+server-python/tests/test_cognitive.py::test_init_dimensions_correct_keys PASSED [ 43%]
+server-python/tests/test_cognitive.py::test_init_option_signals PASSED   [ 44%]
+server-python/tests/test_cognitive.py::test_init_law3_penalty PASSED     [ 45%]
+server-python/tests/test_curriculum.py::test_save_curriculum PASSED      [ 46%]
+server-python/tests/test_curriculum.py::test_save_curriculum_empty_data PASSED [ 47%]
+server-python/tests/test_curriculum.py::test_load_curriculum PASSED      [ 48%]
+server-python/tests/test_curriculum.py::test_load_curriculum_none PASSED [ 50%]
+server-python/tests/test_health.py::test_health_returns_ok PASSED        [ 51%]
+server-python/tests/test_ingestion.py::test_scenario_option1_score_update PASSED [ 52%]
+server-python/tests/test_ingestion.py::test_scenario_option2_score_update PASSED [ 53%]
+server-python/tests/test_ingestion.py::test_scenario_option3_weak_dim_no_law3 PASSED [ 54%]
+server-python/tests/test_ingestion.py::test_scenario_option3_strong_dim_law3 PASSED [ 55%]
+server-python/tests/test_ingestion.py::test_scenario_option4_score_update PASSED [ 56%]
+server-python/tests/test_ingestion.py::test_question_correct PASSED      [ 57%]
+server-python/tests/test_ingestion.py::test_question_incorrect PASSED    [ 58%]
+server-python/tests/test_ingestion.py::test_prompt_lab_weighted_average PASSED [ 60%]
+server-python/tests/test_ingestion.py::test_prompt_lab_high_samples_low_alpha PASSED [ 61%]
+server-python/tests/test_ingestion.py::test_concept_reading PASSED       [ 62%]
+server-python/tests/test_ingestion.py::test_summary_reflection PASSED    [ 63%]
+server-python/tests/test_ingestion.py::test_law3_triggered PASSED        [ 64%]
+server-python/tests/test_ingestion.py::test_law3_not_triggered_weak PASSED [ 65%]
+server-python/tests/test_ingestion.py::test_law3_not_triggered_other_path PASSED [ 66%]
+server-python/tests/test_ingestion.py::test_score_clamped_at_zero PASSED [ 67%]
+server-python/tests/test_ingestion.py::test_score_clamped_at_one PASSED  [ 68%]
+server-python/tests/test_journey.py::test_next_returns_3_cards PASSED    [ 70%]
+server-python/tests/test_journey.py::test_next_targets_weakest PASSED    [ 71%]
+server-python/tests/test_journey.py::test_next_no_profile PASSED         [ 72%]
+server-python/tests/test_journey.py::test_outcomes_updates_profile PASSED [ 73%]
+server-python/tests/test_journey.py::test_outcomes_idempotent PASSED     [ 74%]
+server-python/tests/test_journey.py::test_outcomes_law3_flag PASSED      [ 75%]
+server-python/tests/test_journey.py::test_loop_targets_new_weakest PASSED [ 76%]
+server-python/tests/test_journey.py::test_next_returns_mode_field PASSED [ 77%]
+server-python/tests/test_journey.py::test_next_returns_depth_field PASSED [ 78%]
+server-python/tests/test_journey.py::test_next_creates_agent_prompt_row PASSED [ 80%]
+server-python/tests/test_journey.py::test_outcomes_law3_score_drop PASSED [ 81%]
+server-python/tests/test_journey.py::test_outcomes_law3_forces_next_target PASSED [ 82%]
+server-python/tests/test_journey.py::test_outcomes_law3_preserve_message PASSED [ 83%]
+server-python/tests/test_journey.py::test_next_with_initialized_profile_full_flow PASSED [ 84%]
+server-python/tests/test_journey.py::test_outcomes_law3_full_chain PASSED [ 85%]
+server-python/tests/test_new_endpoints.py::test_cognitive_summary PASSED [ 86%]
+server-python/tests/test_new_endpoints.py::test_cognitive_summary_no_profile PASSED [ 87%]
+server-python/tests/test_new_endpoints.py::test_journey_stage PASSED     [ 88%]
+server-python/tests/test_new_endpoints.py::test_journey_stage_no_profile PASSED [ 90%]
+server-python/tests/test_new_endpoints.py::test_journey_stage_discovery PASSED [ 91%]
+server-python/tests/test_new_endpoints.py::test_journey_discovery PASSED [ 92%]
+server-python/tests/test_new_endpoints.py::test_journey_discovery_duplicate PASSED [ 93%]
+server-python/tests/test_new_endpoints.py::test_journey_discovery_wrong_count PASSED [ 94%]
+server-python/tests/test_progress.py::test_complete_lesson PASSED        [ 95%]
+server-python/tests/test_progress.py::test_complete_lesson_missing_fields PASSED [ 96%]
+server-python/tests/test_progress.py::test_save_questions PASSED         [ 97%]
+server-python/tests/test_progress.py::test_save_questions_empty PASSED   [ 98%]
+server-python/tests/test_progress.py::test_progress_summary PASSED       [100%]
+
+=============================== warnings summary ===============================
+../../usr/local/lib/python3.11/dist-packages/fastapi/testclient.py:1
+  /usr/local/lib/python3.11/dist-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+server-python/tests/test_auth.py: 4 warnings
+server-python/tests/test_chat.py: 5 warnings
+server-python/tests/test_cognitive.py: 8 warnings
+server-python/tests/test_curriculum.py: 4 warnings
+server-python/tests/test_journey.py: 15 warnings
+server-python/tests/test_new_endpoints.py: 8 warnings
+server-python/tests/test_progress.py: 5 warnings
+  /usr/local/lib/python3.11/dist-packages/jwt/api_jwt.py:147: InsecureKeyLengthWarning: The HMAC key is 26 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    return self._jws.encode(
+
+server-python/tests/test_auth.py: 2 warnings
+server-python/tests/test_chat.py: 5 warnings
+server-python/tests/test_cognitive.py: 5 warnings
+server-python/tests/test_curriculum.py: 4 warnings
+server-python/tests/test_journey.py: 14 warnings
+server-python/tests/test_new_endpoints.py: 8 warnings
+server-python/tests/test_progress.py: 5 warnings
+  /usr/local/lib/python3.11/dist-packages/jwt/api_jwt.py:368: InsecureKeyLengthWarning: The HMAC key is 26 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    decoded = self.decode_complete(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 90 passed, 93 warnings in 0.95s ========================
