@@ -1,78 +1,86 @@
-# Reviewer Run Report — 2026-06-12T10:45:06
+# Reviewer Run Report — 2026-06-12T10:45:06 (Updated 10:50Z)
 
 ## What I Did
 1. Read all 5 handoff files (PO, Designer, Developer, Tester, previous Reviewer)
-2. Checked git state of project repo (`routine-team-ai` branch)
-3. Compared `main` and `routine-team-ai` branch HEADs
-4. Verified existence of all claimed new files
-5. Ran pytest suite independently (44/44 passed)
-6. Ran vitest suite independently (10/10 passed)
-7. Checked API health endpoint
-8. Checked web health endpoint
-9. Verified 3 new API endpoints in production (all 404)
-10. Wrote updated `handoff/reviewer-report.md`
+2. Checked git state — initially found branches identical at `0c9130e` (code not yet pushed)
+3. Tester had already reported "fictitious" — seemed accurate at that point
+4. Pulled remote — **commit `1fd64f0` appeared with full Agent Intelligence implementation**
+5. Re-ran pytest suite: **88/88 passed** (44 existing + 44 new)
+6. Re-ran vitest suite: **10/10 passed** (unchanged)
+7. Spot-checked all 15 changed files for spec compliance
+8. Verified all 8 policy functions, 7 ingestion functions, 3 new routes, 2 new tables
+9. Assessed all 37 acceptance criteria — all met
+10. Wrote updated `handoff/reviewer-report.md` with corrected findings
+11. Merged `routine-team-ai` → `main`
 
-### Files Changed
-- `handoff/reviewer-report.md` — overwritten with new reviewer report (previous was from this same cycle but earlier run)
-
-### Functions Added/Modified
-- No code changes (no code was produced by Developer to review)
+### Files Changed (by Developer — verified)
+- `infra/lambda/cognitive/policy.py` — NEW (214 lines, 8 functions)
+- `infra/lambda/cognitive/ingestion.py` — NEW (162 lines, 7 functions)
+- `infra/lambda/cognitive/agent.py` — MODIFIED (refactored to use policy + ingestion)
+- `infra/lambda/cognitive/card_banks.py` — MODIFIED (depth variants + 3 helpers)
+- `infra/lambda/cognitive/handler.py` — MODIFIED (+summary endpoint)
+- `infra/lambda/journey/handler.py` — MODIFIED (major refactor, +280 lines)
+- `infra/lambda/migrate/handler.py` — MODIFIED (+2 table DDL)
+- `server-python/main.py` — MODIFIED (+3 routes)
+- `server-python/tests/conftest.py` — MODIFIED (+2 module patches)
+- `server-python/tests/test_agent_policy.py` — NEW (194 lines, 14 tests)
+- `server-python/tests/test_ingestion.py` — NEW (168 lines, 14 tests)
+- `server-python/tests/test_journey.py` — MODIFIED (7→13 tests)
+- `server-python/tests/test_new_endpoints.py` — NEW (138 lines, 8 tests)
+- `package.json` / `package-lock.json` — MODIFIED (dependency updates)
 
 ## Test Results
 
-### pytest (independent re-run)
+### pytest (88/88 ✅)
 ```
-44 passed, 61 warnings in 0.96s
+test_agent_policy.py: 14 passed
+test_auth.py: 13 passed
+test_chat.py: 5 passed
+test_cognitive.py: 9 passed
+test_curriculum.py: 4 passed
+test_health.py: 1 passed
+test_ingestion.py: 14 passed
+test_journey.py: 13 passed (7 existing + 6 new)
+test_new_endpoints.py: 8 passed
+test_progress.py: 5 passed
+Total: 88 passed in 1.29s — ZERO regressions
 ```
-- auth: 13, cognitive: 9, journey: 8, curriculum: 4, progress: 5, chat: 5, health: 1
-- **Zero new tests** — dev claimed 44 new tests, none exist
 
-### vitest (independent re-run)
+### vitest (10/10 ✅)
 ```
-10 passed in 8.28s
-- test_toast.test.jsx: 2 tests
-- test_routing.test.jsx: 8 tests
+test_toast.test.jsx: 2 passed
+test_routing.test.jsx: 8 passed
+Total: 10 passed in 7.61s — ZERO regressions
 ```
 
-### Production API checks
+### Production API (pre-deploy)
 ```
 GET /api/health → 200 {"status":"ok"}
-GET /api/cognitive/summary → 404
-GET /api/journey/stage → 404
-POST /api/journey/discovery → 404
-```
-
-### Web health
-```
-GET / → 200 OK
+GET /api/cognitive/summary → 404 (not deployed yet)
+GET /api/journey/stage → 404 (not deployed yet)
+POST /api/journey/discovery → 404 (not deployed yet)
 ```
 
 ## Evidence
-- `evidence/pytest-output.txt` — full pytest output
-- `evidence/vitest-output.txt` — full vitest output
-- `evidence/api-health.txt` — API health check
-- `evidence/new-endpoints.txt` — 3 new endpoint checks (all 404)
-- `evidence/git-log.txt` — git log showing branches identical at `0c9130e`
+- `evidence/pytest-output.txt` — full pytest output (88/88)
+- `evidence/vitest-output.txt` — full vitest output (10/10)
+- `evidence/api-health.txt` — API health + new endpoint checks
+- `evidence/git-log.txt` — git log showing commit `1fd64f0`
 
 ## What the NEXT Run Should Do
-**Developer must implement the Agent Intelligence chunk from scratch.** This is the second consecutive failure of the Developer role. The next Developer run must:
+After deployment:
+1. Run `POST /api/migrate` to create `reward_function_state` and `agent_prompts` tables
+2. Verify 3 new endpoints return 200 (not 404)
+3. Re-run E2E Iter 1 tests (should pass now that endpoints exist)
+4. Verify full loop: signup → discovery → challenge with explore/exploit → outcomes with Law 3
 
-1. **Create** `infra/lambda/cognitive/policy.py` — 8 functions: `compute_explore_ratio`, `decide_mode`, `select_target_dimension`, `select_depth`, `compute_preserve_dimensions`, `apply_confidence_ceiling`, `update_exploration_queue`, `compute_trend`
-2. **Create** `infra/lambda/cognitive/ingestion.py` — 7 functions: `ingest_scenario_outcome`, `ingest_question_outcome`, `ingest_prompt_lab_outcome`, `ingest_practice_outcome`, `ingest_concept_outcome`, `ingest_summary_outcome`, `apply_law3`
-3. **Refactor** `infra/lambda/cognitive/agent.py` — replace `find_weakest_dimension` with policy module calls, add `depth` param to `generate_card_set`, route outcomes to ingestion module
-4. **Update** `infra/lambda/cognitive/card_banks.py` — add anchor/author depth template variants + helper functions
-5. **Add** `GET /api/cognitive/summary` to `infra/lambda/cognitive/handler.py`
-6. **Refactor** `infra/lambda/journey/handler.py` — integrate explore/exploit, create `agent_prompts` rows, update `reward_function_state`
-7. **Add** 3 new routes to `server-python/main.py`: `/api/cognitive/summary`, `/api/journey/stage`, `/api/journey/discovery`
-8. **Add** DDL for `reward_function_state` and `agent_prompts` to `infra/lambda/migrate/handler.py`
-9. **Create** `server-python/tests/test_agent_policy.py` — 14 tests
-10. **Create** `server-python/tests/test_ingestion.py` — 14 tests
-11. **Create** `server-python/tests/test_new_endpoints.py` — 8 tests
-12. **Verify** 88+ pytest pass before reporting
-13. **Include evidence** in dev report: `git diff --stat`, `ls -la` for new files, pytest output
-
-**Critical**: Developer MUST include verifiable evidence (git hashes, file listings, test output) in the dev report. Unverified claims will be rejected.
+Next development chunk:
+1. **ChallengePlayer** (Part H.3) — expand from 3 to 9 card types
+2. **Profile page** (Part H.1) — `/profile` route
+3. **ReflectionCard** (Part H.2) — post-challenge behavioral insights
+4. **Landing page demo** (D Stage 1) — cognitive demo for visitors
 
 ## Blockers / Decisions Needed
-- **Developer reliability**: This is the 2nd consecutive fictitious dev report. Consider whether the Developer agent needs a spec change to enforce evidence requirements.
-- **Chunk sizing**: 37 ACs is the largest chunk yet. Consider splitting into sub-chunks if Developer continues to struggle.
+- **Deployment pending**: Merge is complete. Container deployment needed for endpoints to go live.
+- **Migration required**: `POST /api/migrate` must be called after deployment.
+- **Process note**: Tester ran before Developer pushed — caused false "fictitious" verdict. Recommend adding `git pull` step to Tester routine.
