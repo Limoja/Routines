@@ -1,121 +1,119 @@
 # PO Review — 2026-06-12
 
-## Current Iteration: 1 — The Thinnest Loop
-## Pipeline Status: flowing
+## Gap Analysis Summary
 
-## Product Status
-- API Health: **UP** — `/api/health` returns `{"status":"ok"}` at 2026-06-12T00:37Z
-- Web: **UP** — returns 200 OK
-- Iteration 0 **COMPLETE** — merged to main at `6153092` (2026-06-12)
-- 53 tests passing: 28 pytest + 6 vitest + 10 E2E + 9 web UI verification
-- CI pipeline running: `.github/workflows/test.yml` with parallel pytest + vitest jobs
-- Existing features all functional: auth, onboarding, curriculum, lessons, chat, practice
-- **No Iteration 1 features exist yet** — no `/api/cognitive/*`, no `/api/journey/*`, no Discovery.jsx, no Learn.jsx
+Gap analysis performed against `docs/AIInstructor-MASTER-SPECIFICATION.md` (v3.0, 699 lines). I compared every section of the spec against the live production site and the merged code.
 
-## Previous Work Review
-### From Tester Report (Iteration 0 — PASS):
-- 22/22 acceptance criteria met
-- 28 pytest tests passing (auth: 13, curriculum: 4, progress: 5, chat: 5, health: 1)
-- 6 vitest route smoke tests passing
-- 10/10 E2E steps passing against production API
-- 9/9 web UI curl-based verifications passing
-- Playwright tests written but blocked by container env (work in CI ubuntu-latest)
+### What's Working (matches spec):
 
-### Bugs from Tester (both low severity):
-1. `__pycache__` directories committed to git — needs `.gitignore` fix (may already be fixed in merge)
-2. Playwright cannot run in minimal containers — env limitation, not code bug
+- **Auth system** (Part G.2): signup, login, me, profile, verify-email, forgot/reset-password, resend-verification, notification-preferences — all 35 endpoints deployed and passing
+- **Chat service** (Part C.2): message, sessions, history, recommendations — working
+- **Practice service** (Part C.2): submit, history — working
+- **Testing infrastructure** (Part I.1): pytest (44 tests), vitest (6 tests), E2E script, CI workflow — all green
+- **Data model basics** (Part F.2): users, user_profiles, lesson_progress, chat_sessions — all exist
+- **CognitiveRadar component** (Part H.4): built, renders SVG — exists in codebase
+- **Law 1 compliance** (A.2): concept templates emphasize human ownership for all dimensions (verified in code)
 
-### Gaps Found (Iteration 0 → 1 transition):
-- No new gaps in Iteration 0 deliverables
-- All Iteration 0 infrastructure ready to support Iteration 1 development
+### What's Partial (exists but doesn't fully match spec):
 
-## Acceptance Criteria for Iteration 1
+- **Cognitive profile API** (Part G.1): `POST /api/cognitive/init` and `GET /api/cognitive/profile` exist in code (merged, 44 pytest pass) but **NOT deployed to production** — returns 404 on live API
+- **Journey API** (Part G.1): `POST /api/journey/next` and `POST /api/journey/outcomes` exist in code but **NOT deployed** — returns 404 on live API
+- **Discovery page** (Part D Stage 2): `Discovery.jsx` exists in code with 8 scenario cards, 4 options, progress indicator — but **NOT deployed** and missing resumable discovery, archetype reveal, animated radar build
+- **Learn page** (Part D Stage 3): `Learn.jsx` exists in code with 3-card challenge player — but **NOT deployed** and renders only concept→question→summary (spec calls for 5–8 card types)
+- **Cognitive profiles table** (Part F.1): DDL exists in migration code but **NOT run against production DB**
+- **card_interactions table** (Part F.1): DDL exists but **NOT run against production DB**
+- **Agent logic** (Part E): Simplest agent only — always exploits (targets weakest), no explore/exploit policy (E.2), no depth selection (E.3), simplified outcome rules (not full E.4)
+- **Law 3 enforcement** (E.5): Partial — flags `law3_violation` in reflection but doesn't force next challenge to target that dimension in preserve mode (E.5 step 2)
+- **UserContext** (Part H.2): Server-first profile loading exists but journeyEngine.js client mock still primary; full migration to server-side source of truth not done (target for Part E.9)
 
-Iteration 1 is the core product loop: **discovery cards → cognitive profile → agent challenges → profile updates → repeat**. This is the biggest single iteration — the Developer should implement backend-first (endpoints + tables), then frontend pages.
+### What's Missing (spec requires, nothing exists):
 
-The implementation plan and master spec agree on the scope. The master spec adds detail on option semantics (Part D, Stage 2) and API contracts (Part G.1).
+- **DEPLOYMENT**: Iteration 1 code merged to main (`3f69f75`) but production containers not updated — **this is the #1 blocker**
+- **3 more API endpoints** (Part G.1): `GET /api/cognitive/summary`, `POST /api/journey/discovery`, `GET /api/journey/stage`
+- **`agent_prompts` table** (Part F.1): Required for full agent→card engine contract (E.7)
+- **`reward_function_state` table** (Part F.1): Required for explore/exploit policy
+- **Explore/exploit policy** (Part E.2): No ratio logic, no exploration queue, no confidence-based decisions
+- **Depth selection / 3A Framework** (Part E.3): No anchor/adapt/author logic tied to score thresholds
+- **Full outcome ingestion** (Part E.4): Score updates simplified; missing confidence ceiling (E.6), variance floor, periodic re-exploration, re-asking protocol
+- **Anti-pigeon-holing** (Part E.6): No confidence cap (0.95), no decay, no forced re-exploration every 25 interactions
+- **JourneyDashboard** (Part D Stage 3, Part H.1): Home page should be dashboard for auth users — currently old Dashboard with 18 sections
+- **ReflectionCard component** (Part H.2): Post-challenge reflection not a separate card type
+- **ChallengePlayer** (Part H.2): Learn.jsx is minimal; spec calls for full player with 9 card types, keyboard nav, exit-with-confirmation
+- **Toast system** (Part B.3 #9): No global toast/notification system
+- **ErrorBoundary** (Part B.3): No React error boundary component
+- **Route restructure** (Part H.1): Old routes still primary — `/onboarding`, `/curriculum`, `/courses`, `/epoch-lesson`, `/learning-path`, `/tools`, `/about`, `/dashboard` all still exist with no redirects
+- **Navbar: 5 items** (Part H.1): Current navbar has 8+ items
+- **Landing page discovery demo** (Part D Stage 1): Home page should have interactive cognitive demo — currently static
+- **Playwright E2E** (Part I.1): Spec says Playwright replaces curl as primary E2E — currently curl-based
+- **401 redirect** (Part B.3 #2): No global 401 → `/login` with toast redirect
 
-### Chunk A: Database Migration (backend-first)
-1. [ ] `POST /api/migrate` creates `cognitive_profiles` table with columns: `user_id UUID PK`, `dimensions JSONB DEFAULT '{}'`, `explore_exploit_ratio JSONB`, `synergy_score FLOAT DEFAULT 0.0`, `journey_stage VARCHAR DEFAULT 'discovery'`, `total_interactions INT DEFAULT 0`, `created_at TIMESTAMP`, `updated_at TIMESTAMP`
-2. [ ] `POST /api/migrate` creates `card_interactions` table with columns: `id UUID PK`, `user_id UUID FK`, `session_id UUID`, `card_id VARCHAR`, `card_type VARCHAR`, `option_selected INT`, `option_path VARCHAR`, `time_spent_ms INT`, `prompt_lab_score INT`, `revision_count INT DEFAULT 0`, `cognitive_signal JSONB`, `completed_at TIMESTAMP`
-3. [ ] Migration is idempotent (`CREATE TABLE IF NOT EXISTS`)
-4. [ ] Existing tables and data are not affected by migration
+### What's Broken:
 
-### Chunk B: Cognitive Profile API
-5. [ ] `POST /api/cognitive/init` — authenticated (JWT). Accepts 8 scenario responses. Creates a `cognitive_profiles` row with initial dimension scores computed from the option signals per the master spec option semantics: option 1 (`without_ai`) → +0.10 target dim; option 2 (`human_leads`) → +0.05 target +0.05 strategic; option 3 (`full_outsource`) → −0.10 target IF score > 0.6 else neutral; option 4 (`ai_heavy`) → +0.05 operational +0.05 technical. Returns the initialized profile with all 8 dimensions.
-6. [ ] `GET /api/cognitive/profile` — authenticated. Returns the user's cognitive profile: `{dimensions: {creative: {score, confidence, samples, trend}, ...}, explore_exploit_ratio, synergy_score, journey_stage, total_interactions}`. Returns 404 if profile not yet initialized.
-7. [ ] `POST /api/cognitive/init` returns 409 if profile already exists for user (prevents overwrite).
-8. [ ] All 8 dimension keys match the master spec: `creative`, `strategic`, `analytical`, `operational`, `communication`, `detail`, `empathetic`, `technical`.
-9. [ ] Each dimension object has: `{score: 0.0-1.0, confidence: 0.0-1.0, samples: int, trend: "stable"}`.
+- **Nothing functionally broken** in production — all 35 deployed endpoints work correctly
+- **Deployment gap**: production is 1 merge behind main (code at `3f69f75` not deployed)
 
-### Chunk C: Journey API (Agent + Card Generation)
-10. [ ] `POST /api/journey/next` — authenticated. Returns `{session_id, agent_prompt_id, challenge_title, cards: [...]}`. The simplest agent: targets the dimension with the lowest score, generates a 3-card set (1 concept + 1 question + 1 summary). Returns appropriate default if no profile exists yet.
-11. [ ] `POST /api/journey/outcomes` — authenticated. Accepts `{agent_prompt_id, interactions: [{card_id, card_type, option_selected, option_path, time_spent_ms, ...}]}`. Updates `cognitive_profiles.dimensions` based on interaction signals. Returns `{profile: {...updated}, reflection: {owned: [], ai_helped: [], law3_flags: [], message: "..."}}`.
-12. [ ] `POST /api/journey/outcomes` inserts rows into `card_interactions` table for each interaction.
-13. [ ] After outcome submission, a subsequent `POST /api/journey/next` may target a different (new weakest) dimension.
-14. [ ] Outcome submission is idempotent per `agent_prompt_id` (returns 409 on duplicate).
-15. [ ] Card content comes from hardcoded template banks per dimension (ported from `journeyEngine.js` scenario data). No LLM generation in Iteration 1.
+## Priority: Next Chunk
 
-### Chunk D: Frontend — Discovery Scenarios Page
-16. [ ] `src/pages/Discovery.jsx` exists and renders 8 behavioral scenario cards (one per cognitive dimension).
-17. [ ] Each scenario card presents a work scenario with 4 options matching the master spec option semantics: (1) do it yourself, (2) you lead + AI assists, (3) AI end-to-end, (4) AI heavy lifting + you review.
-18. [ ] Scenario content is ported from `journeyEngine.js` dimension banks (role priors, scenario contexts already exist).
-19. [ ] Progress indicator shows "Card N of 8" during discovery.
-20. [ ] After completing all 8 cards, calls `POST /api/cognitive/init` with the 8 responses.
-21. [ ] On success, displays CognitiveRadar component with the initialized profile (animated reveal).
-22. [ ] "Start Learning" button navigates to `/learn`.
-23. [ ] Route `/discover` added to `App.jsx` with `RequireAuth` guard.
-24. [ ] Old `/onboarding` route still works (backward compatibility — do NOT remove).
+**Deploy Iteration 1 code to production and run DB migration.**
 
-### Chunk E: Frontend — Challenge Player (Learn Page)
-25. [ ] `src/pages/Learn.jsx` exists and calls `POST /api/journey/next` on mount.
-26. [ ] Renders the 3-card set in sequence: concept → question → summary.
-27. [ ] Tracks time spent on each card (start timer on card render, stop on next/submit).
-28. [ ] On completing all cards, calls `POST /api/journey/outcomes` with interaction data.
-29. [ ] Displays updated CognitiveRadar in sidebar/header after outcome submission.
-30. [ ] Shows reflection message from the outcomes response (owned strengths, AI-helped areas).
-31. [ ] "Next Challenge" button calls `POST /api/journey/next` again to continue the loop.
-32. [ ] Route `/learn` added to `App.jsx` with `RequireAuth` guard.
+Why this chunk: Per spec B.1 Rule 3 — "Every iteration is deployable and **deployed** before being marked done." The Thinnest Loop code is merged (`3f69f75`) with 42/42 acceptance criteria passing at code level, 44 pytest green, but production still runs old code. The 5 E2E failures are ALL caused by this deployment gap. Nothing else should be built until the current code is live and verified.
 
-### Chunk F: Frontend Integration
-33. [ ] `src/api.js` has new functions: `cognitiveInit(responses)`, `cognitiveProfile()`, `journeyNext()`, `journeyOutcomes(agentPromptId, interactions)`.
-34. [ ] `UserContext.jsx` updated: `cognitiveProfile` state loaded from server (not just localStorage). localStorage used as cache only.
-35. [ ] Error handling: 401 redirects to `/login`; API failures show toast messages (no silent `.catch(() => {})`).
-36. [ ] Loading states: skeletons or spinners shown while API calls are in flight.
+If deployment is not possible in this cycle (ops constraint), the fallback chunk is to build the most impactful missing feature that doesn't require deployment: the **Route restructure + JourneyDashboard** (Part H.1), which unifies the home page as the learning hub and cleans up the navigation to match the spec.
 
-### Chunk G: Tests
-37. [ ] New pytest tests for `/api/cognitive/init`, `/api/cognitive/profile`, `/api/journey/next`, `/api/journey/outcomes` (target: 15+ new tests).
-38. [ ] E2E test covers the full Iteration 1 loop: signup → discovery (8 cards) → radar reveal → first challenge (3 cards) → outcomes → profile update → second challenge.
-39. [ ] Existing Iteration 0 tests (28 pytest, 6 vitest, 10 E2E) still pass — no regressions.
+## Acceptance Criteria
 
-### Law Compliance (P0 — mandatory)
-40. [ ] **Law 1 check**: Given a user with `creative` score 0.85, when the agent generates a challenge, no card suggests delegating creative work to AI.
-41. [ ] **Law 3 check**: In `POST /api/journey/outcomes`, if user selects `full_outsource` (option 3) on a dimension where their score > 0.6, the `law3_flags` array in the reflection response includes that dimension.
-42. [ ] **Law 2 check**: Challenges target the user's weakest dimension, guiding AI use where abilities are lower.
+### Deployment Chunk (P0 — blocks everything else)
+1. [ ] [P0] Production API container image rebuilt from main branch (`3f69f75`) and pushed to ACR (`pamousk.azurecr.io/ai-instructor-api:latest`)
+2. [ ] [P0] Production web container image rebuilt from main branch and pushed to ACR (`pamousk.azurecr.io/ai-instructor-web:latest`)
+3. [ ] [P0] Azure Container Apps updated to new image revisions (both API and web)
+4. [ ] [P0] `POST /api/migrate` called against production — creates `cognitive_profiles` and `card_interactions` tables
+5. [ ] [P0] `GET /api/health` returns `"ok"` on new deployment
+6. [ ] [P0] `POST /api/cognitive/init` returns 401 (not 404) on production — endpoint exists
+7. [ ] [P0] `POST /api/journey/next` returns 401 (not 404) on production — endpoint exists
+8. [ ] [P0] E2E steps 11–15 (cognitive init, profile, journey next, outcomes, second next) pass against production
+9. [ ] [P0] All existing E2E steps 1–10 still pass — no regression
+
+### Fallback: Route Restructure + Navbar (if deployment blocked)
+10. [ ] [P1] Navbar shows exactly 5 items: Home · Learn · Practice · Chat · Profile (per H.1)
+11. [ ] [P1] `/` renders JourneyDashboard for authenticated users (radar + next challenge CTA + stats), old marketing for visitors
+12. [ ] [P1] Old routes redirect: `/onboarding` → `/discover`, `/curriculum*` → `/learn`, `/lesson/:ch/:le` → `/learn`, `/epoch-lesson` → `/learn`, `/learning-path` → `/`, `/courses` → `/`, `/dashboard` → `/`
+13. [ ] [P1] 401 responses clear token and redirect to `/login` with toast message (per B.3 #2)
+14. [ ] [P1] Global Toast component created — every mutation outcome shows feedback (per B.3 #9)
+15. [ ] [P1] React ErrorBoundary wraps main app — no render crashes from malformed API data (per B.3 #7)
 
 ## Bugs to Fix
-- **From Tester (Iteration 0):** `__pycache__` directories in git — verify `.gitignore` fix was merged, clean up if not.
-- **From Tester (Iteration 0):** Playwright env limitation — not a code bug, tests ready for CI.
+- **E2E steps 11–15 failing** — caused by deployment gap, not code bugs. Will resolve once deployed.
+- **`__pycache__` in git** — carried from Iteration 0. Low priority but should clean up (`.gitignore` + `git rm --cached`).
 
-## Iteration Status
-- Iteration 0: **COMPLETE** (merged 2026-06-12, commit `6153092`)
-- Iteration 1: **in-progress** — acceptance criteria written above
-- Do NOT advance to Iteration 2 until all 42 criteria are met and deployed
+## Spec Compliance Assessment
 
-## Priority Order for Developer
-1. **Chunk A** — DB migration (tables must exist before anything else)
-2. **Chunk B** — Cognitive profile API (backend endpoints)
-3. **Chunk C** — Journey API (agent logic + card generation)
-4. **Chunk D** — Discovery page frontend
-5. **Chunk E** — Learn page frontend
-6. **Chunk F** — Integration (UserContext, api.js, error handling)
-7. **Chunk G** — Tests
-8. **Law compliance** — verify throughout, formal check at end
-
-## Key Implementation Notes
-- **Dimension keys**: Use `creative`, `strategic`, `analytical`, `operational`, `communication`, `detail`, `empathetic`, `technical` (matching master spec). Note: `journeyEngine.js` uses `detail_accuracy` and `technical_fluency` — **normalize to master spec keys**.
-- **Option semantics**: The master spec (Part D, Stage 2) defines exact score adjustments per option. Follow these precisely.
-- **Card generation**: Iteration 1 is deliberately dumb — always exploits (targets weakest dim), no explore/exploit, no LLM generation. Template banks hardcoded per dimension.
-- **Backward compatibility**: Old `/onboarding` route MUST still work. Do not remove any existing pages.
-- **`journeyEngine.js`** (636 lines) has rich scenario data to port — role priors, dimension configs, explore/exploit policy. Use it as a source, but the server-side implementation is new Python code.
-- **Migration pattern**: Follow existing pattern in `infra/migrate/handler.py` — append new `CREATE TABLE IF NOT EXISTS` statements to the SCHEMA string.
+| Spec Section | Status | Coverage |
+|---|---|---|
+| A.1–A.5 Purpose & Philosophy | ✅ Aligned | Product direction correct |
+| A.2 Three Laws | ⚠️ Partial | Law 1 ✅, Law 2 ✅, Law 3 partial (flags but doesn't force preserve challenge) |
+| A.4 8 Dimensions | ✅ Working | Keys match spec, 4 fields per dim |
+| B.3 Engineering Quality Bar | ❌ Missing | No toast system, no error boundary, no global 401 redirect |
+| C.1 Core Loop | ⚠️ Partial | Loop works in code (not deployed), but no explore/exploit, minimal agent |
+| C.2 Component Topology | ❌ Missing | 6+ components from spec not built (JourneyDashboard, ReflectionCard, etc.) |
+| C.3 Remove/Keep/Build | ❌ Missing | Old pages not removed/redirected, new components not built |
+| D Stage 1 Landing | ❌ Missing | No discovery demo on home page |
+| D Stage 2 Discovery | ⚠️ Partial | 8 cards exist (not deployed), missing resumable, archetype, animated reveal |
+| D Stage 3 Learning Loop | ⚠️ Partial | 3-card challenge exists (not deployed), missing 5–8 card types, reflection |
+| D Stage 4 Mastery | ❌ Missing | Not started |
+| E.1 Reward Function | ❌ Missing | No reward function state tracking |
+| E.2 Explore/Exploit | ❌ Missing | Always exploits, no ratio logic |
+| E.3 Depth/3A | ❌ Missing | No anchor/adapt/author selection |
+| E.4 Outcome Ingestion | ⚠️ Partial | Basic updates work, missing full E.4 rules |
+| E.5 Law 3 Enforcement | ⚠️ Partial | Flags violation but doesn't force preserve challenge |
+| E.6 Anti-Pigeon-Holing | ❌ Missing | No confidence cap, decay, or forced re-exploration |
+| E.7 Prompt Interface | ❌ Missing | No structured agent prompt JSON |
+| E.8 Cold Start | ✅ Working | Universal 8-card discovery, role priors don't seed scores |
+| F.1 New Tables | ⚠️ Partial | 2 of 4 tables exist (missing `agent_prompts`, `reward_function_state`) |
+| F.4 State Ownership | ⚠️ Partial | Server exists but journeyEngine.js still primary on client |
+| G.1 New Endpoints | ⚠️ Partial | 4 of 7 built (not deployed); missing summary, discovery, stage |
+| H.1 Routes | ❌ Missing | No restructure, old routes still primary |
+| H.2 Components | ❌ Missing | 5+ new components needed |
+| H.3 Card Types | ⚠️ Partial | Only concept, question, summary exist |
+| H.4 Radar Rendering | ⚠️ Partial | Radar built but no confidence rendering, no trend ticks |
+| I.1 Test Stack | ⚠️ Partial | pytest+vitest OK; Playwright not primary E2E |
+| I.2 E2E Journeys | ❌ Missing | Only journey #1 partial; #2–#8 not implemented |
