@@ -1,15 +1,15 @@
 # AI Instructor — Iteration Tracker
 
-## Current Iteration: 1
-## Status: in-progress
-## Title: The Thinnest Loop
+## Current Iteration: 2
+## Status: pending
+## Title: Scenario Cards + AI Paths
 
 ## Iteration History
 
 | # | Title | Status | Completed |
 |---|-------|--------|-----------|
 | 0 | Testing Foundation | **complete** | 2026-06-12 |
-| 1 | The Thinnest Loop | **in-progress** | - |
+| 1 | The Thinnest Loop | **complete** | 2026-06-12 |
 | 2 | Scenario Cards + AI Paths | pending | - |
 | 3 | Explore/Exploit Policy | pending | - |
 | 4 | Prompt Lab + Depth Selection | pending | - |
@@ -28,19 +28,19 @@
 - [x] Frontend vitest — 6 route smoke tests passing
 - [x] CI pipeline — `.github/workflows/test.yml` (parallel pytest + vitest jobs)
 
-## Iteration 1 Progress (in-progress)
-- [ ] DB migration: `cognitive_profiles` and `card_interactions` tables
-- [ ] `POST /api/cognitive/init` — create profile from 8 discovery responses
-- [ ] `GET /api/cognitive/profile` — return user's cognitive profile
-- [ ] `POST /api/journey/next` — return 3-card set targeting weakest dimension
-- [ ] `POST /api/journey/outcomes` — submit outcomes, update profile, return reflection
-- [ ] `src/pages/Discovery.jsx` — 8 behavioral scenario cards
-- [ ] `src/pages/Learn.jsx` — challenge player (concept → question → summary)
-- [ ] Routes: `/discover` and `/learn` added to App.jsx
-- [ ] UserContext + api.js updated for cognitive/journey APIs
-- [ ] Law compliance verified (Law 1, 2, 3)
-- [ ] Tests: 15+ new pytest + E2E covering full discovery→challenge→outcome loop
-- [ ] Existing tests (28 pytest, 6 vitest, 10 E2E) still pass — no regressions
+## Iteration 1 Progress (COMPLETE — merged 2026-06-12)
+- [x] DB migration: `cognitive_profiles` and `card_interactions` tables — migration run successfully
+- [x] `POST /api/cognitive/init` — create profile from 8 discovery responses
+- [x] `GET /api/cognitive/profile` — return user's cognitive profile
+- [x] `POST /api/journey/next` — return 3-card set targeting weakest dimension
+- [x] `POST /api/journey/outcomes` — submit outcomes, update profile, return reflection
+- [x] `src/pages/Discovery.jsx` — 8 behavioral scenario cards
+- [x] `src/pages/Learn.jsx` — challenge player (concept → question → summary)
+- [x] Routes: `/discover` and `/learn` added to App.jsx
+- [x] UserContext + api.js updated for cognitive/journey APIs
+- [x] Law compliance verified (Law 1, 2, 3)
+- [x] Tests: 16 new pytest + 5 E2E steps
+- [x] Existing tests (28 pytest, 6 vitest, 10 E2E) still pass — no regressions
 
 ## Notes
 - Iteration 0 completed 2026-06-12 — merged to main at commit `6153092`

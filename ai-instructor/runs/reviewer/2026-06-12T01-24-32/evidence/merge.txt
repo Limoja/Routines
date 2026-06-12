@@ -1,0 +1,18 @@
+## Merge evidence (2026-06-12)
+
+routine-team-ai → main merge at commit 3f69f75
+
+Commits merged (1):
+1. 958d249 feat(iteration-1): the thinnest loop — cognitive discovery + challenge system
+
+Files changed: 19 files, +1967 lines, -5 lines
+Merge strategy: ort (no-ff)
+Conflicts: none
+Pushed to origin/main: 6153092..3f69f75
+
+Migration: POST /api/migrate → {"message": "Migration complete"}
+New tables created: cognitive_profiles, card_interactions
+
+Deployment status: New endpoints NOT yet live in container (404).
+deploy-azure.yml only triggers on `azure-deploy` branch push, not `main`.
+Manual deployment or azure-deploy branch push needed to roll out new code.
