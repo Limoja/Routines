@@ -1,0 +1,103 @@
+=== PROPER Law 3 Test ===
+Plan: Init → boost creative above 0.6 → submit full_outsource → verify Law 3
+
+Step 1: Signup ✅
+Step 2: Init creative=0.6
+
+Step 3: First challenge ap_id=33538179-b8fa-418a-aa98-9142b2e4628c
+  Submitting scenario with without_ai on creative (should boost +0.03)...
+  Creative after boost: 0.63 (should be 0.63 = 0.6 + 0.03)
+
+Step 4: Second challenge ap_id=2933c04c-b6d7-4784-81c4-f02dcf6dfa58
+  Submitting scenario with FULL_OUTSOURCE on creative (Law 3 should trigger!)...
+{
+    "profile": {
+        "dimensions": {
+            "detail": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "creative": {
+                "score": 0.62,
+                "trend": "stable",
+                "samples": 3,
+                "confidence": 0.39
+            },
+            "strategic": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "technical": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "analytical": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "empathetic": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "operational": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "communication": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            }
+        },
+        "journey_stage": "discovery",
+        "total_interactions": 2,
+        "synergy_score": 0.0
+    },
+    "reflection": {
+        "owned": [],
+        "ai_helped": [],
+        "law3_flags": [
+            "creative"
+        ],
+        "preserve_messages": [
+            "You're great at Creative Thinking \u2014 don't outsource your superpower!"
+        ],
+        "message": "\u26a0\ufe0f Law 3 alert: You outsourced a strength (creative). Consider owning these tasks yourself to maintain your edge."
+    }
+}
+
+=== Law 3 Verification ===
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+  File "/usr/lib/python3.11/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+Step 5: Third challenge target = creative
+(Should target 'creative' per E.5 preserve mode: {'yes ✅' if creative == 'creative' else 'no ❌'})
+
+============================================
+LAW 3 PROPER TEST COMPLETE
+============================================

@@ -1,0 +1,42 @@
+=== Step 1: Signup ===
+Token acquired ✅
+
+=== Step 2: Cognitive Init (8 discovery responses) ===
+Init OK ✅ — stage=discovery, dims=8, creative_score=0.6
+
+=== Step 3: Journey Next ===
+AC1: /next 200 ✅
+AC2: mode=explore
+AC3: depth=adapt
+AC4: agent_prompt_id=b5c8583a-6eba-414b-828c-3c9eb12eb3de
+AC5: cards=3
+AC6: target=analytical
+
+=== Step 4: Journey Outcomes (with REAL session_id) ===
+AC7: has profile=yes, has reflection=no
+  Reflection: AI supported: analytical
+
+=== Step 5: Second Next (verify different challenge) ===
+AC8: second next OK, different prompt_id=yes
+
+=== Step 6: Summary ===
+AC15: strengths=3, weaknesses=0, uncertain=8
+
+=== Step 7: Stage ===
+{
+    "stage": "growth",
+    "mastery_eligible": false,
+    "avg_confidence": 0.242,
+    "avg_score": 0.586
+}
+
+=== Step 8: Idempotency (duplicate outcome → 409) ===
+Idempotency: {'error': 'Outcomes already submitted for this agent_prompt_id'}
+
+=== Step 9: No auth → 401 ===
+No auth: {'error': 'Authentication required'}
+No auth next: {'error': 'Authentication required'}
+
+============================================
+FULL E2E COMPLETE
+============================================

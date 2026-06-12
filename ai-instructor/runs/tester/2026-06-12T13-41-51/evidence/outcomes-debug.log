@@ -1,0 +1,89 @@
+=== Signup ===
+=== Init ===
+Init OK, stage: discovery
+
+=== Next ===
+agent_prompt_id=e7fcf1df-4e1d-4a46-bf43-1f465123f16c session_id=825597e9-48b2-475f-ae9d-ece1bba70a1a target=analytical
+
+=== Outcomes with verbose ===
+Note: Unnecessary use of -X or --request, POST is already inferred.
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying 51.142.139.32:443...
+* Connected to ai-inst-production-api.blackrock-3f2021d2.ukwest.azurecontainerapps.io (51.142.139.32) port 443 (#0)
+* ALPN: offers h2,http/1.1
+} [5 bytes data]
+* TLSv1.3 (OUT), TLS handshake, Client hello (1):
+} [512 bytes data]
+*  CAfile: /etc/ssl/certs/ca-certificates.crt
+*  CApath: /etc/ssl/certs
+{ [5 bytes data]
+* TLSv1.3 (IN), TLS handshake, Server hello (2):
+{ [122 bytes data]
+* TLSv1.3 (IN), TLS handshake, Encrypted Extensions (8):
+{ [15 bytes data]
+* TLSv1.3 (IN), TLS handshake, Certificate (11):
+{ [6980 bytes data]
+* TLSv1.3 (IN), TLS handshake, CERT verify (15):
+{ [264 bytes data]
+* TLSv1.3 (IN), TLS handshake, Finished (20):
+{ [52 bytes data]
+* TLSv1.3 (OUT), TLS change cipher, Change cipher spec (1):
+} [1 bytes data]
+* TLSv1.3 (OUT), TLS handshake, Finished (20):
+} [52 bytes data]
+* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384
+* ALPN: server accepted h2
+* Server certificate:
+*  subject: C=US; ST=WA; L=Redmond; O=Microsoft Corporation; CN=blackrock-3f2021d2.ukwest.azurecontainerapps.io
+*  start date: May 31 05:25:09 2026 GMT
+*  expire date: Nov 27 05:25:09 2026 GMT
+*  subjectAltName: host "ai-inst-production-api.blackrock-3f2021d2.ukwest.azurecontainerapps.io" matched cert's "*.blackrock-3f2021d2.ukwest.azurecontainerapps.io"
+*  issuer: C=US; O=Microsoft Corporation; CN=Microsoft TLS G2 RSA CA OCSP 04
+*  SSL certificate verify ok.
+} [5 bytes data]
+* using HTTP/2
+* h2h3 [:method: POST]
+* h2h3 [:path: /api/journey/outcomes]
+* h2h3 [:scheme: https]
+* h2h3 [:authority: ai-inst-production-api.blackrock-3f2021d2.ukwest.azurecontainerapps.io]
+* h2h3 [user-agent: curl/7.88.1]
+* h2h3 [accept: */*]
+* h2h3 [content-type: application/json]
+* h2h3 [authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxNGNhNGEyNi1kY2M4LTQ0MzctYWQ0Zi0zZjA5NDk5YTAyNjAiLCJleHAiOjE3ODM4NjM4NDN9.EZboAXDT2_j2P28gOkKA4dwG0gpQiPfNxqo6SUieV9c]
+* h2h3 [content-length: 248]
+* Using Stream ID: 1 (easy handle 0x5f6071525980)
+} [5 bytes data]
+> POST /api/journey/outcomes HTTP/2
+> Host: ai-inst-production-api.blackrock-3f2021d2.ukwest.azurecontainerapps.io
+> user-agent: curl/7.88.1
+> accept: */*
+> content-type: application/json
+> authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxNGNhNGEyNi1kY2M4LTQ0MzctYWQ0Zi0zZjA5NDk5YTAyNjAiLCJleHAiOjE3ODM4NjM4NDN9.EZboAXDT2_j2P28gOkKA4dwG0gpQiPfNxqo6SUieV9c
+> content-length: 248
+> 
+} [5 bytes data]
+* We are completely uploaded and fine
+{ [5 bytes data]
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+{ [230 bytes data]
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+{ [230 bytes data]
+* old SSL session ID is stale, removing
+{ [5 bytes data]
+< HTTP/2 200 
+< date: Fri, 12 Jun 2026 13:44:02 GMT
+< server: uvicorn
+< content-length: 1086
+< content-type: application/json
+< 
+{ [1086 bytes data]
+100  1334  100  1086  100   248  11022   2517 --:--:-- --:--:-- --:--:-- 13612
+* Connection #0 to host ai-inst-production-api.blackrock-3f2021d2.ukwest.azurecontainerapps.io left intact
+{"profile": {"dimensions": {"detail": {"score": 0.55, "trend": "stable", "samples": 1, "confidence": 0.22999999999999998}, "creative": {"score": 0.6, "trend": "stable", "samples": 1, "confidence": 0.22999999999999998}, "strategic": {"score": 0.6500000000000001, "trend": "stable", "samples": 1, "confidence": 0.22999999999999998}, "technical": {"score": 0.6000000000000001, "trend": "stable", "samples": 1, "confidence": 0.22999999999999998}, "analytical": {"score": 0.5, "trend": "stable", "samples": 1, "confidence": 0.26}, "empathetic": {"score": 0.6, "trend": "stable", "samples": 1, "confidence": 0.22999999999999998}, "operational": {"score": 0.6000000000000001, "trend": "stable", "samples": 1, "confidence": 0.22999999999999998}, "communication": {"score": 0.6, "trend": "stable", "samples": 1, "confidence": 0.22999999999999998}}, "journey_stage": "discovery", "total_interactions": 1, "synergy_score": 0.0}, "reflection": {"owned": [], "ai_helped": [], "law3_flags": [], "preserve_messages": [], "message": "Profile updated. Keep exploring to strengthen your cognitive map."}}
+
+=== Try minimal outcomes ===
+Minimal outcomes test:
+{
+    "error": "interactions array with at least one item required"
+}

@@ -1,0 +1,19 @@
+=== Depth Selection Test (AC17) ===
+Spec E.3: score<0.3→anchor, 0.3-0.6→adapt, ≥0.6→author
+
+After full_outsource init: analytical=0.5, creative=0.5
+Depth for target=analytical (score=0.5) = adapt
+(score around 0.5 → expect adapt)
+
+=== Auth Edge Cases ===
+No auth on /api/journey/next:
+{'error': 'Authentication required'}
+No auth on /api/journey/outcomes:
+{'error': 'Authentication required'}
+
+No profile:
+{'error': 'No cognitive profile found. Complete discovery first at /discover.'}
+
+============================================
+DEPTH + EDGE CASE TEST COMPLETE
+============================================

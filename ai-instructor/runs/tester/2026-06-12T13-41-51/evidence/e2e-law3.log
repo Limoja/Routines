@@ -1,0 +1,102 @@
+=== Law 3 Test: Seed strong dimension → full_outsource → verify enforcement ===
+
+--- Step 1: Signup ---
+Token ✅
+
+--- Step 2: Init with creative as STRONG (option 1 = without_ai = +0.10) ---
+creative.score=0.6 (should be 0.6 = 0.5 + 0.10 for without_ai)
+
+--- Step 3: Get next challenge ---
+challenge target=analytical, ap_id=aeec1f41-4335-462b-90b6-328bb5746fed
+
+--- Step 4: Submit outcomes with full_outsource on creative (Law 3 trigger) ---
+{
+    "profile": {
+        "dimensions": {
+            "detail": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "creative": {
+                "score": 0.61,
+                "trend": "stable",
+                "samples": 2,
+                "confidence": 0.31
+            },
+            "strategic": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "technical": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "analytical": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "empathetic": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "operational": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "communication": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            }
+        },
+        "journey_stage": "discovery",
+        "total_interactions": 1,
+        "synergy_score": 0.0
+    },
+    "reflection": {
+        "owned": [
+            "creative"
+        ],
+        "ai_helped": [],
+        "law3_flags": [],
+        "preserve_messages": [],
+        "message": "You strengthened: creative"
+    }
+}
+
+--- Extract Law 3 verification ---
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+  File "/usr/lib/python3.11/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+--- Step 5: Verify next challenge targets creative (preserve mode) ---
+Second challenge target = analytical
+(Spec E.5 says next challenge should target the Law 3 violation dimension)
+
+============================================
+LAW 3 TEST COMPLETE
+============================================

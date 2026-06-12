@@ -1,0 +1,259 @@
+=== Step 1: Signup (tester-1781271810@e2e.local) ===
+{
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDI0ODAzNi05ZTdlLTQyZGQtOThlOS1mYjA3YzVmYjYyMDIiLCJleHAiOjE3ODM4NjM4MTF9.rQ-W5PfOf9RAU_P99SEas1ycj8w697RzODGn_zoV3UQ",
+    "user": {
+        "id": "ed248036-9e7e-42dd-98e9-fb07c5fb6202",
+        "email": "tester-1781271810@e2e.local",
+        "name": "E2E Tester",
+        "email_verified": false
+    }
+}
+TOKEN acquired: eyJhbGciOiJIUzI1NiIs...
+
+=== Step 2: Cognitive Init (8 discovery responses) ===
+{
+    "profile": {
+        "dimensions": {
+            "detail": {
+                "score": 0.55,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "creative": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "strategic": {
+                "score": 0.6500000000000001,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "technical": {
+                "score": 0.6000000000000001,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "analytical": {
+                "score": 0.5,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "empathetic": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "operational": {
+                "score": 0.6000000000000001,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            },
+            "communication": {
+                "score": 0.6,
+                "trend": "stable",
+                "samples": 1,
+                "confidence": 0.22999999999999998
+            }
+        },
+        "journey_stage": "discovery",
+        "total_interactions": 0,
+        "synergy_score": 0.0
+    }
+}
+
+=== Step 3: Journey Next (AC1-6) ===
+{
+    "session_id": "233095a5-8a9b-499b-9e89-90299ebc06c7",
+    "agent_prompt_id": "fd38f7fe-b207-43e0-bc31-80f3099c077b",
+    "challenge_title": "Strengthen Your Analytical Reasoning \ud83d\udcca",
+    "cards": [
+        {
+            "id": "233095a5-8a9b-499b-9e89-90299ebc06c7-concept",
+            "type": "concept",
+            "dimension": "analytical",
+            "title": "What is Analytical Reasoning in the Age of AI?",
+            "body": "Analytical reasoning is your ability to break down complex problems, identify patterns in data, and draw evidence-based conclusions. AI excels at processing vast datasets, but interpreting what patterns MEAN in your specific context \u2014 that's uniquely human. The best analysis pairs AI's speed with your domain understanding."
+        },
+        {
+            "id": "233095a5-8a9b-499b-9e89-90299ebc06c7-question",
+            "type": "question",
+            "dimension": "analytical",
+            "title": "Test Your Analytical Reasoning",
+            "body": "AI finds a correlation between two metrics in your data. What's the most important NEXT step?",
+            "options": [
+                "Act on the correlation immediately \u2014 AI found it so it must be meaningful",
+                "Dismiss it \u2014 correlations are always spurious",
+                "Apply your domain knowledge to evaluate whether the correlation makes causal sense before acting",
+                "Ask AI to find more correlations to confirm"
+            ],
+            "correct_index": 2,
+            "explanation": "AI spots patterns; humans evaluate meaning. Always apply domain expertise to determine if a correlation has causal backing."
+        },
+        {
+            "id": "233095a5-8a9b-499b-9e89-90299ebc06c7-summary",
+            "type": "summary",
+            "dimension": "analytical",
+            "title": "Analytical Reasoning \u2014 Key Takeaway",
+            "body": "You've explored analytical reasoning in the AI era. Remember: AI finds patterns, but you interpret their meaning. The best analysis pairs AI's processing power with your domain understanding. Keep practicing to strengthen this area."
+        }
+    ],
+    "depth": "adapt",
+    "mode": "explore",
+    "target_dimensions": {
+        "analytical": {
+            "score": 0.5,
+            "trend": "stable",
+            "samples": 1,
+            "confidence": 0.22999999999999998
+        }
+    },
+    "preserve_dimensions": {}
+}
+Result: STATUS_OK
+
+AC1: /next returns 200 with cards = STATUS_OK
+AC2: mode=explore (expect explore|exploit)
+AC3: depth=adapt (expect anchor|adapt|author)
+AC4: agent_prompt_id=fd38f7fe-b207-43e0-bc31-80f3099c077b
+AC5: cards count=3 (expect 3)
+AC6: target_dimensions=analytical
+
+=== Step 4: Journey Outcomes (AC7) ===
+{
+    "error": "Server error"
+}
+AC7: has profile=no:{'error': 'Server error'}, has reflection=no
+
+=== Step 5: Second Journey Next (AC8 - second challenge differs) ===
+{
+    "session_id": "422f2752-9839-4c85-930b-b8be3f7a5900",
+    "agent_prompt_id": "c13b5a46-c3f3-47df-98fe-d21d6b410a56",
+    "challenge_title": "Strengthen Your Analytical Reasoning \ud83d\udcca",
+    "cards": [
+        {
+            "id": "422f2752-9839-4c85-930b-b8be3f7a5900-concept",
+            "type": "concept",
+            "dimension": "analytical",
+            "title": "What is Analytical Reasoning in the Age of AI?",
+            "body": "Analytical reasoning is your ability to break down complex problems, identify patterns in data, and draw evidence-based conclusions. AI excels at processing vast datasets, but interpreting what patterns MEAN in your specific context \u2014 that's uniquely human. The best analysis pairs AI's speed with your domain understanding."
+        },
+        {
+            "id": "422f2752-9839-4c85-930b-b8be3f7a5900-question",
+            "type": "question",
+            "dimension": "analytical",
+            "title": "Test Your Analytical Reasoning",
+            "body": "AI finds a correlation between two metrics in your data. What's the most important NEXT step?",
+            "options": [
+                "Act on the correlation immediately \u2014 AI found it so it must be meaningful",
+                "Dismiss it \u2014 correlations are always spurious",
+                "Apply your domain knowledge to evaluate whether the correlation makes causal sense before acting",
+                "Ask AI to find more correlations to confirm"
+            ],
+            "correct_index": 2,
+            "explanation": "AI spots patterns; humans evaluate meaning. Always apply domain expertise to determine if a correlation has causal backing."
+        },
+        {
+            "id": "422f2752-9839-4c85-930b-b8be3f7a5900-summary",
+            "type": "summary",
+            "dimension": "analytical",
+            "title": "Analytical Reasoning \u2014 Key Takeaway",
+            "body": "You've explored analytical reasoning in the AI era. Remember: AI finds patterns, but you interpret their meaning. The best analysis pairs AI's processing power with your domain understanding. Keep practicing to strengthen this area."
+        }
+    ],
+    "depth": "adapt",
+    "mode": "explore",
+    "target_dimensions": {
+        "analytical": {
+            "score": 0.5,
+            "trend": "stable",
+            "samples": 1,
+            "confidence": 0.22999999999999998
+        }
+    },
+    "preserve_dimensions": {}
+}
+AC8: second next OK=yes, different prompt_id=yes
+
+=== Step 6: Cognitive Summary (AC15) ===
+{
+    "strengths": [
+        {
+            "key": "strategic",
+            "label": "Strategic Planning",
+            "score": 0.6500000000000001
+        },
+        {
+            "key": "operational",
+            "label": "Operational Execution",
+            "score": 0.6000000000000001
+        },
+        {
+            "key": "technical",
+            "label": "Technical Fluency",
+            "score": 0.6000000000000001
+        }
+    ],
+    "weaknesses": [],
+    "uncertain": [
+        {
+            "key": "creative",
+            "label": "Creative Thinking",
+            "confidence": 0.22999999999999998
+        },
+        {
+            "key": "strategic",
+            "label": "Strategic Planning",
+            "confidence": 0.22999999999999998
+        },
+        {
+            "key": "analytical",
+            "label": "Analytical Reasoning",
+            "confidence": 0.22999999999999998
+        },
+        {
+            "key": "operational",
+            "label": "Operational Execution",
+            "confidence": 0.22999999999999998
+        },
+        {
+            "key": "communication",
+            "label": "Communication",
+            "confidence": 0.22999999999999998
+        },
+        {
+            "key": "detail",
+            "label": "Detail Accuracy",
+            "confidence": 0.22999999999999998
+        },
+        {
+            "key": "empathetic",
+            "label": "Empathetic Intelligence",
+            "confidence": 0.22999999999999998
+        },
+        {
+            "key": "technical",
+            "label": "Technical Fluency",
+            "confidence": 0.22999999999999998
+        }
+    ]
+}
+
+=== Step 7: Journey Stage (AC16) ===
+{
+    "stage": "discovery",
+    "mastery_eligible": false,
+    "avg_confidence": 0.23,
+    "avg_score": 0.588
+}
+
+============================================
+E2E COMPLETE
+============================================
