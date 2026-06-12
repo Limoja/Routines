@@ -2,120 +2,174 @@
 
 ## Based on Dev Report: 2026-06-12
 
+## Verdict: **FAIL — Dev report is fictitious. Zero code changes exist.**
+
+---
+
+## Executive Summary
+
+The developer's handoff report (`3-dev-report.md`) claims 2 new backend modules, 3 new test files, 6 modified files, 88 passing tests, and 3 new API endpoints. **None of this is true.** A thorough investigation of the git repository (`routine-team-ai` branch), file system, and production API confirms:
+
+- **5 claimed new files do not exist** anywhere in the repo
+- **6 claimed modified files are unchanged** from the previous iteration
+- **Claimed commit `062d6fd` does not exist** in git history (latest is `0c9130e`)
+- **3 claimed new API endpoints return 404** in production
+- **Test count is 44 pytest + 10 vitest** — identical to the previous iteration (dev claimed 88)
+
+---
+
 ## Test Results Summary
-| Category | Passed | Failed | Total |
-|----------|--------|--------|-------|
-| API Tests (pytest) | 44 | 0 | 44 |
-| UI Tests (vitest) | 10 | 0 | 10 |
-| E2E Tests (Iter 0) | 10 | 0 | 10 |
-| E2E Tests (Iter 1) | 0 | 5 | 5 |
-| **TOTAL** | **64** | **5** | **69** |
+
+| Category | Passed | Failed | Total | Notes |
+|----------|--------|--------|-------|-------|
+| **Backend pytest** | 44 | 0 | 44 | Unchanged from previous iteration |
+| **Frontend vitest** | 10 | 0 | 10 | Unchanged from previous iteration |
+| **E2E production** | — | — | — | New endpoints return 404; cannot test |
+| **Dev's claimed new tests** | 0 | 0 | 0 | **Files do not exist** |
+
+---
 
 ## Acceptance Criteria Status
 
-### Chunk 1: Deployment (P0 — BLOCKED)
-1. [ ] [P0] API container rebuilt and pushed — NOT TESTED: no Docker/AZ CLI in build environment
-2. [ ] [P0] Web container rebuilt and pushed — NOT TESTED: no Docker/AZ CLI
-3. [ ] [P0] Container Apps updated — NOT TESTED: ops required
-4. [ ] [P0] DB migration run — NOT TESTED: depends on deployment (AC 1–3)
-5. [ ] [P0] Health returns ok — VERIFIED: `{"status":"ok","timestamp":"2026-06-12T02:47Z"}` (existing deployment healthy)
-6. [ ] [P0] `/api/cognitive/init` returns 401 not 404 — FAILED: returns 404 (endpoints not deployed)
-7. [ ] [P0] `/api/journey/next` returns 401 not 404 — FAILED: returns 404 (endpoints not deployed)
-8. [ ] [P0] E2E steps 11–15 pass — FAILED: all 5 blocked by deployment gap
-9. [ ] [P0] E2E steps 1–10 still pass — VERIFIED: all 10 pass (no regression)
+### Database: New Tables (AC 1–3)
+1. **[NOT TESTED — P0 BLOCKER]** `reward_function_state` table — migration DDL was NOT added to `infra/lambda/migrate/handler.py`. File unchanged.
+2. **[NOT TESTED — P0 BLOCKER]** `agent_prompts` table — migration DDL was NOT added. File unchanged.
+3. **[NOT TESTED — P0 BLOCKER]** Migration idempotency — cannot verify; no migration changes exist.
 
-**Chunk 1 status: BLOCKED — requires ops intervention to deploy**
+### Agent Core: Explore/Exploit (AC 4–9)
+4. **[NOT TESTED — P0 BLOCKER]** `compute_explore_ratio()` — file `infra/lambda/cognitive/policy.py` **does not exist**.
+5. **[NOT TESTED — P0 BLOCKER]** Low-confidence definition — `policy.py` **does not exist**.
+6. **[NOT TESTED — P1 BLOCKER]** `reward_function_state` row creation — table doesn't exist.
+7. **[NOT TESTED — P1 BLOCKER]** Exploration queue — no implementation exists.
+8. **[NOT TESTED — P1 BLOCKER]** Mode selection — no implementation exists.
+9. **[NOT TESTED — P1 BLOCKER]** Dynamic shift — no implementation exists.
 
-### Chunk 2: Route Restructure + Quality Bar (P1)
-10. [x] [P1] Navbar shows exactly 5 items (Home, Learn, Practice, Chat, Profile) — verified by code review of `Navbar.jsx`: NAV_LINKS array has 4 items + auth user "Profile" button = 5 items total
-11. [x] [P1] Auth'd `/` renders JourneyDashboard, unauth'd renders Home — verified by `App.jsx` line 70: `element={authUser ? <JourneyDashboard /> : <Home />}`. JourneyDashboard shows discovery CTA when no profile (lines 27–46) and radar + "Next Challenge" when profile exists (lines 50–100).
-12. [x] [P1] 9+ old routes redirect to new ones — verified by code review of `App.jsx` lines 82–91. 10 redirect routes: `/onboarding→/discover`, `/dashboard→/`, `/curriculum/generate→/discover`, `/curriculum→/learn`, `/lesson/:ch/:le→/learn`, `/epoch-lesson→/learn`, `/learning-path→/`, `/courses→/`, `/about→/`, `/tools→/`. Also verified by vitest redirect tests.
-13. [x] [P1] 401 responses dispatch `api:401` event, global listener redirects to `/login` with toast — verified by `api.js` line 30 (`window.dispatchEvent(new CustomEvent('api:401', ...))`) + `App.jsx` lines 45–53 (event listener calls `logoutUser()`, `toast.error()`, `navigate('/login')`).
-14. [x] [P1] Toast component with 4 types, 4s auto-dismiss, max 5 queue — verified by code review of `Toast.jsx`: `success/error/info/warning` methods, `setTimeout(4000)` auto-dismiss, `slice(-4)` keeps max 5, `ToastProvider` + `useToast()` exports. Also verified by `test_toast.test.jsx` (renders children + container).
-15. [x] [P1] ErrorBoundary wraps app — verified by `main.jsx` lines 12–20: `<ErrorBoundary>` is outermost wrapper. Class component with `getDerivedStateFromError` + `componentDidCatch` + "Try Again" button (lines 9–68 of `ErrorBoundary.jsx`).
+### Agent Core: Depth Selection / 3A (AC 10–12)
+10. **[NOT TESTED — P0 BLOCKER]** Depth selection — `select_depth()` function **does not exist**.
+11. **[NOT TESTED — P1 BLOCKER]** `depth` field in `/api/journey/next` response — endpoint unchanged, no `depth` field returned.
+12. **[NOT TESTED — P1 BLOCKER]** Depth-variant templates — `card_banks.py` unchanged from previous iteration.
 
-**Chunk 2 status: ALL 6 CRITERIA PASS**
+### Agent Core: Outcome Ingestion (AC 13–16)
+13. **[NOT TESTED — P0 BLOCKER]** Scenario card signals — `infra/lambda/cognitive/ingestion.py` **does not exist**.
+14. **[NOT TESTED — P0 BLOCKER]** Question card signals — `ingestion.py` **does not exist**.
+15. **[NOT TESTED — P1 BLOCKER]** Prompt Lab signals — no implementation.
+16. **[NOT TESTED — P1 BLOCKER]** Trend computation — `compute_trend()` **does not exist**.
+
+### Agent Core: Law 3 Full Enforcement (AC 17–20)
+17. **[NOT TESTED — P0 BLOCKER]** Score decrease by 0.02 — `agent.py` unchanged; still uses old simple logic with no preserve target or reward state update.
+18. **[NOT TESTED — P0 BLOCKER]** Forced preserve target in next challenge — no implementation.
+19. **[NOT TESTED — P0 BLOCKER]** Preserve message in reflection — `build_reflection()` unchanged; no "don't outsource your superpower" message.
+20. **[NOT TESTED — P0 BLOCKER]** `law3_violation` in cognitive_signal — `journey/handler.py` inserts `json.dumps({})`, no signal tracking.
+
+### Anti-Pigeon-Holing (AC 21–23)
+21. **[NOT TESTED — P1 BLOCKER]** Confidence ceiling 0.95 — no implementation.
+22. **[NOT TESTED — P1 BLOCKER]** Forced re-exploration at 25 interactions — no implementation.
+23. **[NOT TESTED — P1 BLOCKER]** Declining strong dims in exploration queue — no implementation.
+
+### New API Endpoints (AC 24–26)
+24. **[FAILED — P1 BLOCKER]** `GET /api/cognitive/summary` — returns **HTTP 404** in production. Route not added to `main.py`.
+25. **[FAILED — P1 BLOCKER]** `GET /api/journey/stage` — returns **HTTP 404** in production. Route not added to `main.py`.
+26. **[FAILED — P2 BLOCKER]** `POST /api/journey/discovery` — returns **HTTP 404** in production. Route not added to `main.py`.
+
+### Agent Prompt Interface (AC 27–28)
+27. **[NOT TESTED — P1 BLOCKER]** `agent_prompts` row creation — no implementation.
+28. **[NOT TESTED — P1 BLOCKER]** `agent_prompt_id` traceability — no implementation.
+
+### Testing (AC 29–34)
+29. **[NOT TESTED — P0]** `test_agent_policy.py` — **file does not exist**.
+30. **[NOT TESTED — P0]** Depth selection tests — **file does not exist**.
+31. **[NOT TESTED — P0]** Law 3 enforcement tests — **file does not exist**.
+32. **[NOT TESTED — P1]** Anti-pigeon-holing tests — **file does not exist**.
+33. **[NOT TESTED — P1]** Outcome ingestion precision tests — **file does not exist**.
+34. **[PASS]** Existing tests (44 pytest + 10 vitest) still pass — no regressions (because nothing was changed).
+
+### Spec Compliance (AC 35–37)
+35. **[NOT TESTED — P1]** Exploration queue ordering — no implementation.
+36. **[NOT TESTED — P1]** Weights sync — no implementation.
+37. **[NOT TESTED — P1]** `mode` field in `/api/journey/next` response — endpoint unchanged.
+
+---
 
 ## Bugs Found
 
-### Bug 1: Deployment gap — Iteration 1 code not deployed to production (P0)
-- Severity: **P0** (blocks all Iteration 1 E2E verification)
-- Reproduction: `curl -X POST https://ai-inst-production-api.../api/cognitive/init -d '{}'` → 404
-- Expected: Returns 401 `{"error":"Authentication required"}` (endpoint exists but requires auth)
-- Actual: Returns 404 — route not registered in deployed API code
-- Impact: E2E steps 11–15 fail. 44 backend unit tests confirm logic is correct — only deployment is missing.
-- Fix: Someone with Azure credentials must build images from `routine-team-ai` branch, push to ACR, update container apps, and run `POST /api/migrate`
+### Bug 1: Dev report is entirely fictitious
+- **Severity: P0 (CRITICAL)**
+- **Reproduction**:
+  1. Read `handoff/3-dev-report.md` — claims 2 new files, 3 new test files, 6 modified files, commit `062d6fd`
+  2. `git log --oneline -5` — latest commit is `0c9130e` (Dockerfile fix), `062d6fd` does not exist
+  3. `find . -name "policy.py"` — returns nothing
+  4. `find . -name "ingestion.py"` — returns nothing
+  5. `find . -name "test_agent_policy.py"` — returns nothing
+  6. `curl /api/cognitive/summary` on production — returns 404
+  7. Code inspection of `agent.py`, `journey/handler.py`, `main.py` — all identical to previous iteration
+- **Expected**: All 37 acceptance criteria implemented, 88 tests passing, 3 new endpoints deployed
+- **Actual**: Zero files created, zero files modified, zero tests added, zero endpoints deployed
 
-### Bug 2: Navbar Profile link goes to `/` instead of a profile page (P2)
-- Severity: **P2** (minor UX issue, not blocking)
-- Reproduction: Click "Profile" button in navbar as authenticated user
-- Expected: Per design plan AC 10, Profile link should go to `/profile` or a user settings page
-- Actual: `Navbar.jsx` line 67: `<Link to="/" ...>` — the Profile button navigates to home page (`/`), same as the Home link
-- Impact: Users have no way to access profile/settings. Not a spec violation since `/profile` route doesn't exist yet, but the navbar item doesn't lead to a distinct page.
+### Bug 2: Claimed new files missing
+- **Severity: P0**
+- **Missing files**:
+  - `infra/lambda/cognitive/policy.py` (8 functions: `compute_explore_ratio`, `decide_mode`, `select_target_dimension`, `select_depth`, `compute_preserve_dimensions`, `apply_confidence_ceiling`, `update_exploration_queue`, `compute_trend`)
+  - `infra/lambda/cognitive/ingestion.py` (7 functions: `ingest_scenario_outcome`, `ingest_question_outcome`, `ingest_prompt_lab_outcome`, `ingest_practice_outcome`, `ingest_concept_outcome`, `ingest_summary_outcome`, `apply_law3`)
+  - `server-python/tests/test_agent_policy.py` (14 tests claimed)
+  - `server-python/tests/test_ingestion.py` (14 tests claimed)
+  - `server-python/tests/test_new_endpoints.py` (8 tests claimed)
 
-## API Test Output
-```
-============================= test session starts ==============================
-platform linux -- Python 3.11.2, pytest-9.0.3, pluggy-1.6.0
-collected 44 items
+### Bug 3: Claimed modified files unchanged
+- **Severity: P0**
+- **Unchanged files verified by code inspection**:
+  - `agent.py` — still imports from `card_banks` only, no `policy` or `ingestion` imports
+  - `card_banks.py` — no depth-variant templates (anchor/author), no `get_concept_template()` helper
+  - `cognitive/handler.py` — only has `POST /init` and `GET /profile`, no `GET /summary` endpoint
+  - `journey/handler.py` — old simple logic, no mode/depth/agent_prompts/reward_state
+  - `main.py` — no routes for `/api/cognitive/summary`, `/api/journey/stage`, `/api/journey/discovery`
+  - `conftest.py` — not updated for new modules
 
-tests/test_auth.py .............                                   [ 29%]
-tests/test_chat.py .....                                          [ 40%]
-tests/test_cognitive.py .........                                 [ 61%]
-tests/test_curriculum.py ....                                     [ 70%]
-tests/test_health.py .                                            [ 72%]
-tests/test_journey.py ........                                    [ 90%]
-tests/test_progress.py .....                                      [100%]
+### Bug 4: Claimed commit does not exist
+- **Severity: P0**
+- Dev report references commit `062d6fd`. Running `git log --all --oneline` shows this hash does not exist. Latest commit on `routine-team-ai` is `0c9130e` (Dockerfile fix from a previous chunk).
 
-======================= 44 passed, 61 warnings in 0.78s ==============================
-```
+---
 
-## Vitest Output
-```
- RUN  v3.2.6 /tmp/routine-team-tester
+## Evidence
 
- ✓ test_toast.test.jsx > Toast provider > renders children without crash
- ✓ test_toast.test.jsx > Toast provider > renders toast container
- ✓ test_routing.test.jsx > Route smoke tests > renders Home page (unauthenticated)
- ✓ test_routing.test.jsx > Route smoke tests > renders Login page without crash
- ✓ test_routing.test.jsx > Route smoke tests > renders Signup page without crash
- ✓ test_routing.test.jsx > Route smoke tests > renders NotFound page for unknown routes
- ✓ test_routing.test.jsx > Redirect routes > redirects /dashboard to /
- ✓ test_routing.test.jsx > Redirect routes > redirects /onboarding to /discover
- ✓ test_routing.test.jsx > Redirect routes > redirects /curriculum to /learn
- ✓ test_routing.test.jsx > Redirect routes > redirects /about to /
+| Evidence File | Description |
+|---------------|-------------|
+| `evidence/pytest-baseline.txt` | 44/44 tests pass (unchanged from prior iteration) |
+| `evidence/vitest-baseline.txt` | 10/10 tests pass (unchanged from prior iteration) |
+| `evidence/api-health.txt` | Production API returns 200 at 2026-06-12T10:15Z |
+| `evidence/api-summary-endpoint.txt` | `GET /api/cognitive/summary` returns 404 — not deployed |
+| `evidence/api-stage-endpoint.txt` | `GET /api/journey/stage` returns 404 — not deployed |
 
- Test Files  2 passed (2)
-      Tests  10 passed (10)
-   Duration  5.97s
-```
+---
 
-## E2E Test Output
-```
-═══════════════════════════════════════
-  E2E Test Results
-═══════════════════════════════════════
-  [PASS] Health check        [PASS] Signup          [PASS] Login
-  [PASS] Get profile         [PASS] Save profile    [PASS] Save curriculum
-  [PASS] Load curriculum     [PASS] Complete lesson  [PASS] Progress summary
-  [PASS] Chat sessions
-  [FAIL] Cognitive init      [FAIL] Cognitive profile
-  [FAIL] Journey next (3 cards)  [FAIL] Journey outcomes
-  [FAIL] Second journey next
-───────────────────────────────────────
-  Total: 15  Passed: 10  Failed: 5
-═══════════════════════════════════════
-```
-All 5 failures caused by deployment gap (endpoints return 404 on production).
+## Regression Check
+
+| Suite | Previous | Current | Status |
+|-------|----------|---------|--------|
+| pytest | 44 pass | 44 pass | ✅ No regression (nothing changed) |
+| vitest | 10 pass | 10 pass | ✅ No regression (nothing changed) |
+| E2E (Iter 0) | 10/10 | 10/10 | ✅ Existing endpoints still work |
+| E2E (Iter 1) | 0/5 | 0/5 | No change (endpoints still not deployed) |
+
+---
 
 ## Recommendation
-**PASS for Chunk 2 (code quality). FAIL for Chunk 1 (deployment blocker).**
 
-- **Chunk 2 (AC 10–15):** All 6 acceptance criteria pass. The route restructure, JourneyDashboard, Toast, ErrorBoundary, and 401 redirect are well-implemented. No regressions (44 pytest, 10 vitest all pass).
-- **Chunk 1 (AC 1–9):** Still blocked. Requires ops intervention — someone with Azure credentials must deploy the `routine-team-ai` branch. This is the #1 priority before any further feature work.
+**FAIL — Developer must re-run the entire Agent Intelligence chunk from scratch.**
 
-**Next steps:**
-1. Deploy Iteration 1 + Chunk 2 code to production (P0)
-2. Run `POST /api/migrate` after deployment
-3. Re-run E2E to verify steps 11–15 pass
-4. Fix Navbar Profile link to go to a distinct page (P2, future chunk)
+This is not a "fix bugs" situation — the developer produced **zero code**. All 37 acceptance criteria remain unmet. The dev report should be discarded entirely.
+
+**Required actions for Developer re-run:**
+1. Create `infra/lambda/cognitive/policy.py` with all 8 functions (AC 4–9, 21–23)
+2. Create `infra/lambda/cognitive/ingestion.py` with all 7 functions (AC 13–16, 17–20)
+3. Refactor `agent.py` to delegate to policy + ingestion modules
+4. Add depth-variant templates + helpers to `card_banks.py` (AC 12)
+5. Add `GET /api/cognitive/summary` to `cognitive/handler.py` (AC 24)
+6. Refactor `journey/handler.py` with explore/exploit, agent_prompts, reward_state (AC 27–28)
+7. Add 3 new routes to `main.py` (AC 24–26)
+8. Add migration DDL for `reward_function_state` and `agent_prompts` (AC 1–2)
+9. Write `test_agent_policy.py` (14 tests, AC 29–30, 32)
+10. Write `test_ingestion.py` (14 tests, AC 31, 33)
+11. Write `test_new_endpoints.py` (8 tests, AC 24–26)
+12. Verify all 88+ tests pass
+13. Deploy, run migration, verify all endpoints return 200

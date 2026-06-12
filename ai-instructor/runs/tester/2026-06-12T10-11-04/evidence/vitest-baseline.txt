@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /tmp/routine-team-tester
+
+ ✓ src/tests/test_toast.test.jsx (2 tests) 88ms
+ ✓ src/tests/test_routing.test.jsx (8 tests) 111ms
+
+ Test Files  2 passed (2)
+      Tests  10 passed (10)
+   Start at  10:14:55
+   Duration  7.79s (transform 1.70s, setup 101ms, collect 3.64s, tests 199ms, environment 6.59s, prepare 1.51s)
+
