@@ -1,585 +1,419 @@
-# Design Plan — 2026-06-11
+# Design Plan — 2026-06-12
 
-## Target Iteration: 0 — Testing Foundation
-## Based on PO Review: 2026-06-11 (Run 2)
+## Target Iteration: 1 — The Thinnest Loop
+## Based on PO Review: 2026-06-12
 
 ## Summary
-Create the complete test infrastructure layer for AI Instructor: backend pytest suite (30+ tests with mocked DB), frontend vitest harness with route smoke tests, a curl-based E2E script, and a CI workflow. No application code changes — only test files and CI config.
-
-## Architecture Context
-
-The backend is a **monolith FastAPI app** (`server-python/main.py`, ~300 lines) that delegates to **Lambda handlers** (`infra/lambda/{module}/handler.py`). Each handler is a plain function `handler(event, context)` that:
-- Receives a synthetic "API Gateway event" dict (built by `_make_event()`)
-- Calls `shared.db.query()` for DB access
-- Returns `{statusCode, headers, body}` dicts via `shared.response` helpers
-
-**Mocking strategy**: Patch `shared.db.query` to return controlled data. No real DB needed. The `shared.db` module uses a global `_pool` connection — we bypass it entirely.
-
-**JWT strategy**: Set `JWT_SECRET` env var in test fixtures. Use `shared.jwt_auth.sign_token()` to create valid tokens for authenticated endpoints.
+Build the core product loop: 8 behavioral Discovery Scenario cards → server-side cognitive profile → dumb-agent challenges (3-card sets targeting weakest dimension) → profile updates from outcomes → loop repeats. Backend-first: new DB tables, 4 new API endpoints, then Discovery.jsx and Learn.jsx frontend pages.
 
 ---
 
-## Chunk A: Backend pytest suite (CRITERIA 1–9)
+## Backend Changes
 
-### New Files
+### Database Changes
 
-#### `server-python/requirements.txt` — MODIFIED
-Add to existing:
-```
-pytest==8.3.4
-httpx==0.28.1
-```
+Append to `infra/lambda/migrate/handler.py` SCHEMA string (before the trigger function):
 
-#### `server-python/tests/__init__.py` — NEW
-Empty file to make `tests/` a Python package.
+```sql
+-- ═══════════════════════════════════════════
+-- Iteration 1: Cognitive profiles + card interactions
+-- ═══════════════════════════════════════════
 
-#### `server-python/tests/conftest.py` — NEW
-Shared fixtures for all test files:
-```python
-import os, sys, pytest, json
-from unittest.mock import patch, MagicMock
+CREATE TABLE IF NOT EXISTS cognitive_profiles (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  dimensions JSONB NOT NULL DEFAULT '{}',
+  explore_exploit_ratio JSONB DEFAULT '{"explore": 0.5, "exploit": 0.5}',
+  synergy_score FLOAT DEFAULT 0.0,
+  journey_stage VARCHAR NOT NULL DEFAULT 'discovery',
+  total_interactions INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-# Ensure infra/lambda is on sys.path so `from shared.db import query` works
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'infra', 'lambda'))
+CREATE TABLE IF NOT EXISTS card_interactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  session_id UUID,
+  agent_prompt_id VARCHAR,
+  card_id VARCHAR NOT NULL,
+  card_type VARCHAR NOT NULL,
+  option_selected INT,
+  option_path VARCHAR,
+  time_spent_ms INT,
+  prompt_lab_score INT,
+  revision_count INT DEFAULT 0,
+  cognitive_signal JSONB DEFAULT '{}',
+  completed_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-# Set required env vars before importing app modules
-os.environ.setdefault('JWT_SECRET', 'test-secret-key-for-pytest')
-os.environ.setdefault('DB_HOST', 'localhost')
-os.environ.setdefault('DB_NAME', 'test_db')
-os.environ.setdefault('DB_USER', 'test')
-os.environ.setdefault('DB_PASSWORD', 'test')
-os.environ.setdefault('CORS_ORIGIN', 'http://localhost:5173')
-
-from fastapi.testclient import TestClient
-from main import app
-
-@pytest.fixture
-def client():
-    """FastAPI TestClient — does NOT go through real DB."""
-    return TestClient(app)
-
-@pytest.fixture
-def mock_query():
-    """Patch shared.db.query globally. Returns (mock, cleanup_fn).
-    Usage: mock_query.return_value = [{'id': 1, ...}]
-    """
-    with patch('shared.db.query') as m:
-        yield m
-
-@pytest.fixture
-def auth_token():
-    """Create a valid JWT for user_id='test-user-123'."""
-    from shared.jwt_auth import sign_token
-    return sign_token('test-user-123')
-
-@pytest.fixture
-def auth_headers(auth_token):
-    """Authorization header dict with a valid Bearer token."""
-    return {'Authorization': f'Bearer {auth_token}'}
-
-@pytest.fixture
-def mock_email(monkeypatch):
-    """Suppress all email sending during tests."""
-    with patch('shared.email_service.send_verification_email', return_value={'MessageId': 'test'}):
-        with patch('shared.email_service.send_welcome_email', return_value={'MessageId': 'test'}):
-            with patch('shared.email_service.send_password_reset_email', return_value={'MessageId': 'test'}):
-                with patch('shared.email_service.log_email', return_value=None):
-                    yield
+CREATE INDEX IF NOT EXISTS idx_card_interactions_user_time
+  ON card_interactions(user_id, completed_at);
 ```
 
 **Key design decisions:**
-- `sys.path` manipulation lets test files import from `infra/lambda/` (where `shared/` lives)
-- `mock_query` patches `shared.db.query` — every handler calls this, so one patch covers all DB access
-- `mock_email` prevents SES calls during signup/forgot-password tests
-- `auth_token` uses the real `sign_token()` with the test secret — tests verify JWT validation works correctly
+- `agent_prompt_id` is `VARCHAR` not `UUID FK` — Iteration 1 has no `agent_prompts` table yet (comes Iteration 3). The journey/next endpoint generates a UUID string and stores it as a correlation key.
+- `dimensions` is JSONB keyed by master spec dimension keys: `creative`, `strategic`, `analytical`, `operational`, `communication`, `detail`, `empathetic`, `technical`.
+- Each dimension value is `{score: 0.0-1.0, confidence: 0.0-1.0, samples: int, trend: "stable"}`.
+- `CREATE TABLE IF NOT EXISTS` ensures idempotent migration (AC 3).
 
----
+### API Endpoints
 
-#### `server-python/tests/test_health.py` — NEW
-Tests: 1 function
+| Method | Path | Purpose | Request Body | Response |
+|--------|------|---------|-------------|----------|
+| `POST` | `/api/cognitive/init` | Create cognitive profile from 8 discovery responses | `{responses: [{dimension, option_selected, option_path}]}` (8 items) | `{profile: {dimensions, journey_stage, ...}}` |
+| `GET` | `/api/cognitive/profile` | Get user's cognitive profile | — | `{dimensions: {...}, journey_stage, total_interactions, ...}` |
+| `POST` | `/api/journey/next` | Get next 3-card challenge set | `{}` (optionally `{dimension: "..."}` to force) | `{session_id, agent_prompt_id, challenge_title, cards: [...]}` |
+| `POST` | `/api/journey/outcomes` | Submit card outcomes, update profile | `{agent_prompt_id, interactions: [{card_id, card_type, option_selected, option_path, time_spent_ms}]}` | `{profile: {...}, reflection: {owned: [], ai_helped: [], law3_flags: [], message: "..."}}` |
 
-| Test Function | What It Verifies |
-|---|---|
-| `test_health_returns_ok` | `GET /api/health` → 200, body `{"status":"ok"}` |
+**Error semantics:**
+- `401` — missing/invalid JWT (all 4 endpoints)
+- `409` — `/api/cognitive/init` when profile already exists; `/api/journey/outcomes` duplicate `agent_prompt_id`
+- `404` — `/api/cognitive/profile` when no profile initialized yet
 
-No mocking needed — health endpoint is pure logic (no DB, no auth).
+### New Files
 
----
+#### `infra/lambda/cognitive/__init__.py` — empty package marker
 
-#### `server-python/tests/test_auth.py` — NEW
-Tests: 10+ functions
+#### `infra/lambda/cognitive/handler.py` — Cognitive profile CRUD
+- `handler(event, context)` — routes to:
+  - `POST /api/cognitive/init` — creates `cognitive_profiles` row from 8 discovery responses
+  - `GET /api/cognitive/profile` — returns user's profile or 404
 
-| Test Function | Endpoint | Mock Setup | Expected Result |
-|---|---|---|---|
-| `test_signup_success` | `POST /api/auth/signup` | `mock_query` returns empty for user lookup, then returns `[{id, email, name}]` for insert | 200, body has `token` + `user` |
-| `test_signup_missing_email` | `POST /api/auth/signup` | body `{password: "x"}` | 400 |
-| `test_signup_missing_password` | `POST /api/auth/signup` | body `{email: "x@y.com"}` | 400 |
-| `test_signup_short_password` | `POST /api/auth/signup` | body `{email: "x@y.com", password: "short"}` | 400, "at least 8 characters" |
-| `test_signup_duplicate_email` | `POST /api/auth/signup` | `mock_query` returns existing user on first call | 400, "already registered" |
-| `test_login_success` | `POST /api/auth/login` | `mock_query` returns user with bcrypt hash; mock `bcrypt.checkpw` → True | 200, body has `token` + `user` |
-| `test_login_wrong_password` | `POST /api/auth/login` | `mock_query` returns user; mock `bcrypt.checkpw` → False | 401 |
-| `test_login_nonexistent_user` | `POST /api/auth/login` | `mock_query` returns `[]` | 401 |
-| `test_me_with_valid_token` | `GET /api/auth/me` | `mock_query` returns user row + profile row | 200, body has `user` + `profile` |
-| `test_me_without_token` | `GET /api/auth/me` | no auth header | 401 |
-| `test_profile_update` | `PUT /api/auth/profile` | `mock_query` returns updated profile | 200, body has `profile` |
-| `test_verify_email_valid_token` | `GET /api/auth/verify-email?token=abc` | `mock_query` returns valid token row | 200 |
-| `test_verify_email_invalid_token` | `GET /api/auth/verify-email?token=bad` | `mock_query` returns `[]` | 400 |
+Key functions:
+- `_compute_initial_dimensions(responses)` — applies option signal semantics per master spec Part D Stage 2:
+  - Option 1 (`without_ai`): `+0.10` to target dimension
+  - Option 2 (`human_leads`): `+0.05` to target + `+0.05` to `strategic`
+  - Option 3 (`full_outsource`): `-0.10` to target IF current score > 0.6 (Law 3); else neutral (no change)
+  - Option 4 (`ai_heavy`): `+0.05` to `operational` + `+0.05` to `technical`
+  - All dimensions start at `{score: 0.5, confidence: 0.15, samples: 1, trend: "stable"}` before applying signals (per E.8 cold start)
+  - Scores clamped to `[0.0, 1.0]`
+  - Confidence bumps `+0.08` per sample (per E.4)
+- `_empty_dimensions()` — returns all 8 dims with default values `{score: 0.5, confidence: 0.15, samples: 0, trend: "stable"}`
 
-**Mocking strategy for auth tests:**
-- `bcrypt.hashpw` / `bcrypt.checkpw` — mock to avoid expensive hashing in tests
-- `shared.db.query` — return appropriate rows per test case
-- Email functions — suppressed via `mock_email` fixture
-- The `_make_event()` in `main.py` converts FastAPI requests to Lambda events, but tests go through the FastAPI routes directly (via `TestClient`), so auth header handling is tested end-to-end
+**Dimension keys used** (master spec canonical, NOT journeyEngine.js):
+`creative`, `strategic`, `analytical`, `operational`, `communication`, `detail`, `empathetic`, `technical`
 
----
+#### `infra/lambda/cognitive/agent.py` — Simple agent logic
+- `DIMENSION_CONFIG` — dict mapping 8 dimension keys to `{label, icon, card_templates}`
+- `find_weakest_dimension(dimensions)` — returns the key with lowest `score`
+- `generate_card_set(target_dimension, dimension_config)` — returns 3 cards:
+  1. `{id, type: "concept", title, body}` — teaches the dimension concept
+  2. `{id, type: "question", title, body, options: [...], correct_answer}` — tests understanding
+  3. `{id, type: "summary", title, body}` — reflects on what was learned
+- `update_dimensions_from_outcomes(dimensions, interactions)` — applies E.4 rules:
+  - Scenario option: `±0.02-0.03` per path mapping + `+0.08` confidence per sample
+  - Question correct: `+0.02` score + `+0.05` confidence; incorrect: `-0.01` score + `+0.05` confidence
+  - Law 3 check: if `option_path == "full_outsource"` AND target dim `score > 0.6`, flag it
+- `build_reflection(dimensions_before, dimensions_after, law3_flags)` — returns `{owned: [...], ai_helped: [...], law3_flags: [...], message: "..."}`
 
-#### `server-python/tests/test_curriculum.py` — NEW
-Tests: 3+ functions
+#### `infra/lambda/cognitive/card_banks.py` — Hardcoded template data
+Ported from `journeyEngine.js` `SCENARIO_TEMPLATES` (normalized keys):
+- `DISCOVERY_SCENARIOS` — dict keyed by dimension, each with `{scenario_text, options: [4 items]}` for 8 discovery cards
+- `CONCEPT_TEMPLATES` — dict keyed by dimension, each with `{title, body}` for concept cards
+- `QUESTION_TEMPLATES` — dict keyed by dimension, each with `{question, options: [4 items], correct_index, explanation}`
+- `SUMMARY_TEMPLATES` — dict keyed by dimension, each with `{title, body_template}`
 
-| Test Function | Endpoint | Mock Setup | Expected |
-|---|---|---|---|
-| `test_save_curriculum` | `PUT /api/curriculum` | `mock_query` returns `[{id: 1}]` | 200, `{id: "1"}` |
-| `test_save_curriculum_empty_data` | `PUT /api/curriculum` | body `{}` | 400 |
-| `test_load_curriculum` | `GET /api/curriculum` | `mock_query` returns curriculum data with chapters/lessons | 200, body has `curriculum` with progress merged |
-| `test_load_curriculum_none` | `GET /api/curriculum` | `mock_query` returns `[]` | 200, `{curriculum: null}` |
+**Key normalization** from journeyEngine.js keys:
+- `detail_accuracy` → `detail`
+- `technical_fluency` → `technical`
 
----
+#### `infra/lambda/journey/__init__.py` — empty package marker
 
-#### `server-python/tests/test_progress.py` — NEW
-Tests: 4+ functions
+#### `infra/lambda/journey/handler.py` — Journey loop endpoints
+- `handler(event, context)` — routes to:
+  - `POST /api/journey/next` — returns next 3-card set
+  - `POST /api/journey/outcomes` — submits outcomes, updates profile, returns reflection
 
-| Test Function | Endpoint | Mock Setup | Expected |
-|---|---|---|---|
-| `test_complete_lesson` | `POST /api/progress/lesson` | `mock_query` returns progress row | 200, body has `progress` |
-| `test_complete_lesson_missing_fields` | `POST /api/progress/lesson` | body `{}` | 400 |
-| `test_save_questions` | `POST /api/progress/questions` | `mock_query` returns attempt data | 200, `{saved: N}` |
-| `test_save_questions_empty` | `POST /api/progress/questions` | body `{chapter_id: "c", lesson_id: "l", answers: []}` | 400 |
-| `test_progress_summary` | `GET /api/progress/summary` | `mock_query` returns lessons, weak areas, stats | 200, body has `lessons`, `weak_areas`, `stats` |
-
----
-
-#### `server-python/tests/test_chat.py` — NEW
-Tests: 4+ functions
-
-| Test Function | Endpoint | Mock Setup | Expected |
-|---|---|---|---|
-| `test_list_sessions` | `GET /api/chat/sessions` | `mock_query` returns session list | 200, `{sessions: [...]}` |
-| `test_get_history` | `GET /api/chat/history?session_id=abc` | `mock_query` returns messages | 200, `{messages: [...]}` |
-| `test_get_history_missing_session` | `GET /api/chat/history` | no query param | 400 |
-| `test_send_message` | `POST /api/chat/message` | mock `_get_clients` + `traced_completion` + `mock_query` | 200, body has `message` + `session_id` |
-| `test_send_message_empty` | `POST /api/chat/message` | body `{}` | 400 |
-
-**Special mock for chat tests:**
-- Chat handler calls `_get_clients()` which initializes OpenAI, Langfuse, FalkorDB — all must be mocked
-- Patch `chat.handler._get_clients` to return mock objects
-- Patch `chat.handler.traced_completion` to return a fake LLM response
-- Patch `falkor.get_relevant_context` and `falkor.store_conversation_topic` (non-fatal, but suppress errors)
-
----
-
-## Chunk B: Frontend vitest harness (CRITERIA 10–14)
+Key functions:
+- `_handle_next(user_id, event)` —
+  1. Fetch `cognitive_profiles` row
+  2. If no profile, return 404-like response suggesting `/discover` first
+  3. Find weakest dimension via `agent.find_weakest_dimension()`
+  4. Generate 3-card set via `agent.generate_card_set()`
+  5. Generate `agent_prompt_id` (UUID string)
+  6. Return `{session_id: uuid, agent_prompt_id, challenge_title, cards}`
+- `_handle_outcomes(user_id, event)` —
+  1. Check idempotency: look for existing `card_interactions` with this `agent_prompt_id`
+  2. If duplicate, return 409
+  3. Fetch current profile
+  4. Insert `card_interactions` rows (one per interaction)
+  5. Compute updated dimensions via `agent.update_dimensions_from_outcomes()`
+  6. Build reflection via `agent.build_reflection()`
+  7. Update `cognitive_profiles` row: `dimensions`, `total_interactions += N`, `updated_at = NOW()`
+  8. Return `{profile: {...}, reflection: {...}}`
 
 ### Modified Files
 
-#### `package.json` — MODIFIED
-Add to `devDependencies`:
-```json
-"vitest": "^3.2.1",
-"@testing-library/react": "^16.2.0",
-"jsdom": "^26.1.0"
+#### `infra/lambda/migrate/handler.py` — append `cognitive_profiles` and `card_interactions` DDL to SCHEMA string
+
+#### `server-python/main.py` — add 4 new route groups:
+```python
+# ── Cognitive routes ──────────────────────────────
+from cognitive.handler import handler as cognitive_handler
+
+@app.post("/api/cognitive/init")
+async def cognitive_init(request: Request):
+    body = await request.json()
+    return _to_response(cognitive_handler(_make_event(request, body), None))
+
+@app.get("/api/cognitive/profile")
+async def cognitive_profile(request: Request):
+    return _to_response(cognitive_handler(_make_event(request), None))
+
+
+# ── Journey routes ─────────────────────────────────
+from journey.handler import handler as journey_handler
+
+@app.post("/api/journey/next")
+async def journey_next(request: Request):
+    body = await request.json()
+    return _to_response(journey_handler(_make_event(request, body), None))
+
+@app.post("/api/journey/outcomes")
+async def journey_outcomes(request: Request):
+    body = await request.json()
+    return _to_response(journey_handler(_make_event(request, body), None))
 ```
-Add to `scripts`:
-```json
-"test": "vitest run",
-"test:watch": "vitest"
-```
 
-#### `vite.config.js` — MODIFIED
-Add test configuration:
-```js
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+---
 
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    environment: 'jsdom',
-    setupFiles: './src/tests/setup.js',
-    globals: true,
-  },
-})
-```
+## Frontend Changes
 
-### New Files
+### New Components
 
-#### `src/tests/setup.js` — NEW
-```js
-// Mock localStorage for jsdom
-const localStorageMock = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
-}
-global.localStorage = localStorageMock
+#### `src/pages/Discovery.jsx` — 8 behavioral scenario cards
+- **Props:** none (uses `useUser` context)
+- **State:**
+  - `currentIndex` (int, 0–7) — which card we're on
+  - `responses` (array) — collected responses `[{dimension, option_selected, option_path}]`
+  - `profile` (object|null) — initialized profile after submission
+  - `loading` (bool) — API call in flight
+  - `error` (string|null) — error message
+- **Events:**
+  - `handleOptionSelect(optionIndex)` — records response, advances to next card
+  - `handleFinish()` — after card 8, calls `POST /api/cognitive/init`
+  - `handleStartLearning()` — navigates to `/learn`
+- **Behavior:**
+  - Renders one scenario card at a time with 4 options
+  - Progress indicator: "Card N of 8"
+  - Each option has descriptive text matching master spec semantics:
+    - Option 1: "Do it yourself — lean on your own expertise" (without_ai)
+    - Option 2: "You lead, AI assists" (human_leads)
+    - Option 3: "Let AI handle it end-to-end" (full_outsource)
+    - Option 4: "AI does the heavy lifting, you review" (ai_heavy)
+  - After card 8: submit → show CognitiveRadar with animated reveal → "Start Learning" button
+  - Discovery scenario content is **hardcoded** on the frontend (8 scenarios, one per dimension). Ported from `journeyEngine.js` `SCENARIO_TEMPLATES` with normalized keys.
 
-// Mock fetch for API calls
-global.fetch = jest.fn(() =>
-  Promise.resolve({
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve({}),
+#### `src/pages/Discovery.css` — styling for Discovery page
+
+#### `src/pages/Learn.jsx` — Challenge player (concept → question → summary)
+- **Props:** none (uses `useUser` context)
+- **State:**
+  - `challenge` (object|null) — current card set from API
+  - `currentCardIndex` (int, 0–2) — which card in set
+  - `answers` (array) — collected answers per card
+  - `timeStarted` (int) — timestamp when current card rendered
+  - `reflection` (object|null) — outcome reflection data
+  - `loading` (bool) — API call in flight
+  - `error` (string|null) — error message
+  - `showRadar` (bool) — whether to show sidebar radar
+- **Events:**
+  - `handleNextCard(answer)` — records answer + time_spent_ms, advances
+  - `handleCompleteCards()` — after card 3, calls `POST /api/journey/outcomes`
+  - `handleNextChallenge()` — calls `POST /api/journey/next` again
+- **Behavior:**
+  - On mount: calls `POST /api/journey/next`
+  - Renders cards in sequence: concept (read) → question (interactive) → summary (read)
+  - Tracks `time_spent_ms` per card (start timer on render, stop on advance)
+  - After all 3 cards: submit outcomes → show reflection message + updated CognitiveRadar
+  - "Next Challenge" button to continue the loop
+  - If no profile exists (never did discovery), show prompt to go to `/discover`
+
+#### `src/pages/Learn.css` — styling for Learn page
+
+### Modified Components
+
+#### `src/api.js` — add 4 new API functions
+```javascript
+// ── Cognitive Profile ─────────────────────────
+export async function cognitiveInit(responses) {
+  return request('/api/cognitive/init', {
+    method: 'POST',
+    body: JSON.stringify({ responses }),
   })
-)
+}
+
+export async function cognitiveProfile() {
+  return request('/api/cognitive/profile')
+}
+
+// ── Journey ────────────────────────────────────
+export async function journeyNext() {
+  return request('/api/journey/next', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+export async function journeyOutcomes(agentPromptId, interactions) {
+  return request('/api/journey/outcomes', {
+    method: 'POST',
+    body: JSON.stringify({
+      agent_prompt_id: agentPromptId,
+      interactions,
+    }),
+  })
+}
 ```
 
-#### `src/tests/test_routing.test.jsx` — NEW
-Tests: 6+ functions (at least 5 routes rendering without crash as per AC)
-
-Routes to test (public ones don't need auth context):
-| Test Function | Route | Component | Notes |
-|---|---|---|---|
-| `test_home_page_renders` | `/` | Home | Public route |
-| `test_login_page_renders` | `/login` | Login | Wrapped in RedirectIfAuth |
-| `test_signup_page_renders` | `/signup` | Signup | Wrapped in RedirectIfAuth |
-| `test_about_page_renders` | `/about` | About | Public route |
-| `test_not_found_renders` | `/nonexistent` | NotFound | Catch-all route |
-| `test_courses_page_renders` | `/courses` | Courses | Public route |
-
-**Test approach:** Use `@testing-library/react`'s `render()` with a `MemoryRouter` wrapping. Mock `UserContext` to provide `authLoading: false, authUser: null` (or a test user for protected routes). Assert the component doesn't throw and contains expected text/elements.
-
+#### `src/App.jsx` — add 2 new routes (DO NOT remove any existing routes)
 ```jsx
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
-import { describe, it, expect, vi } from 'vitest'
-import Home from '../pages/Home'
-// ... other imports
+import Discovery from './pages/Discovery'
+import Learn from './pages/Learn'
 
-// Mock UserContext
-const mockContext = {
-  authUser: null,
-  authLoading: false,
-  signupUser: vi.fn(),
-  loginUser: vi.fn(),
-  logoutUser: vi.fn(),
-  // ... other context values
-}
-
-function renderWithRouter(route, { authUser = null } = {}) {
-  const ctx = { ...mockContext, authUser }
-  return render(
-    <MemoryRouter initialEntries={[route]}>
-      <UserContext.Provider value={ctx}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          {/* ... other routes */}
-        </Routes>
-      </UserContext.Provider>
-    </MemoryRouter>
-  )
-}
-
-describe('Route smoke tests', () => {
-  it('renders Home page', () => { renderWithRouter('/'); expect(document.body).toBeDefined() })
-  // ...
-})
+// Add to Routes block:
+<Route path="/discover" element={<RequireAuth><Discovery /></RequireAuth>} />
+<Route path="/learn" element={<RequireAuth><Learn /></RequireAuth>} />
 ```
+Add `'/discover'` and `'/learn'` to `FULLSCREEN_PATHS` array.
 
----
+#### `src/context/UserContext.jsx` — update cognitive profile loading
+- Replace localStorage-only cognitive profile with server-first:
+  - On login (after `getMe()`): call `api.cognitiveProfile()`. If 200, set `cognitiveProfile` state from server data. If 404, profile not yet initialized (new user).
+  - Keep `saveCognitive()` / `loadCognitive()` as cache layer — write to localStorage after successful API responses, read as fallback.
+  - Add `discoverProfile(responses)` function — calls `api.cognitiveInit(responses)`, sets `cognitiveProfile` state, caches to localStorage.
+  - Add `getNextChallenge()` — calls `api.journeyNext()`, returns challenge data.
+  - Add `submitOutcomes(agentPromptId, interactions)` — calls `api.journeyOutcomes()`, updates `cognitiveProfile` state from response.
+- Error handling: API failures show error state (no silent `.catch(() => {})` per B.3 rule 1).
 
-## Chunk C: E2E test script (CRITERIA 15–18)
+#### `src/components/CognitiveRadar.jsx` — update dimension key mapping
+- `CHAPTER_DIMENSION_MAP` still maps old `technical_fluency` and `detail_accuracy` keys. These remain for backward compat with curriculum pages.
+- The `getProfileSummary()` from `journeyEngine.js` already handles arbitrary dimension keys from the profile object. The server will use canonical keys (`detail`, `technical`).
+- No changes needed to CognitiveRadar itself — it reads `cognitiveProfile.dimensions` which are now server-provided.
 
-### New Files
-
-#### `scripts/e2e_test.sh` — NEW (executable)
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-API_URL="${API_URL:-https://ai-inst-production-api.blackrock-3f2021d2.ukwest.azurecontainerapps.io}"
-TIMESTAMP=$(date +%s)
-TEST_EMAIL="e2e-test-${TIMESTAMP}@test.com"
-TEST_PASSWORD="TestPass123!"
-TEST_NAME="E2E Test User"
-
-PASS=0
-FAIL=0
-STEPS=()
-
-step() {
-  local label="$1"
-  local result="$2"  # PASS or FAIL
-  STEPS+=("[$result] $label")
-  if [ "$result" = "PASS" ]; then ((PASS++)); else ((FAIL++)); fi
-}
-
-# ── Step 1: Health Check ────────────────────
-echo "Step 1: Health check..."
-STATUS=$(curl -sf "$API_URL/api/health" | jq -r '.status')
-if [ "$STATUS" = "ok" ]; then step "Health check" "PASS"; else step "Health check" "FAIL"; fi
-
-# ── Step 2: Signup ──────────────────────────
-echo "Step 2: Signup..."
-SIGNUP_RESP=$(curl -sf -X POST "$API_URL/api/auth/signup" \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\",\"name\":\"$TEST_NAME\"}")
-TOKEN=$(echo "$SIGNUP_RESP" | jq -r '.token')
-if [ "$TOKEN" != "null" ] && [ -n "$TOKEN" ]; then step "Signup" "PASS"; else step "Signup" "FAIL"; fi
-
-# ── Step 3: Login ───────────────────────────
-echo "Step 3: Login..."
-LOGIN_RESP=$(curl -sf -X POST "$API_URL/api/auth/login" \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\"}")
-LOGIN_TOKEN=$(echo "$LOGIN_RESP" | jq -r '.token')
-if [ "$LOGIN_TOKEN" != "null" ] && [ -n "$LOGIN_TOKEN" ]; then step "Login" "PASS"; else step "Login" "FAIL"; fi
-# Use login token for subsequent requests
-TOKEN="$LOGIN_TOKEN"
-
-# ── Step 4: Get Profile (auth/me) ───────────
-echo "Step 4: Get profile..."
-ME_RESP=$(curl -sf "$API_URL/api/auth/me" -H "Authorization: Bearer $TOKEN")
-ME_EMAIL=$(echo "$ME_RESP" | jq -r '.user.email')
-if [ "$ME_EMAIL" = "$TEST_EMAIL" ]; then step "Get profile" "PASS"; else step "Get profile" "FAIL"; fi
-
-# ── Step 5: Save Profile (onboarding) ───────
-echo "Step 5: Save profile..."
-PROFILE_RESP=$(curl -sf -X PUT "$API_URL/api/auth/profile" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"role":"developer","ai_level":"beginner","job_title":"E2E Tester"}')
-if echo "$PROFILE_RESP" | jq -e '.profile' > /dev/null 2>&1; then step "Save profile" "PASS"; else step "Save profile" "FAIL"; fi
-
-# ── Step 6: Save Curriculum ─────────────────
-echo "Step 6: Save curriculum..."
-CUR_RESP=$(curl -sf -X PUT "$API_URL/api/curriculum" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"curriculum":{"title":"E2E Test Curriculum","chapters":[{"id":"ch1","title":"Chapter 1","lessons":[{"id":"l1","title":"Lesson 1"}]}]}}')
-if echo "$CUR_RESP" | jq -e '.id' > /dev/null 2>&1; then step "Save curriculum" "PASS"; else step "Save curriculum" "FAIL"; fi
-
-# ── Step 7: Load Curriculum ─────────────────
-echo "Step 7: Load curriculum..."
-LOAD_CUR=$(curl -sf "$API_URL/api/curriculum" -H "Authorization: Bearer $TOKEN")
-if echo "$LOAD_CUR" | jq -e '.curriculum.title' > /dev/null 2>&1; then step "Load curriculum" "PASS"; else step "Load curriculum" "FAIL"; fi
-
-# ── Step 8: Complete Lesson ─────────────────
-echo "Step 8: Complete lesson..."
-LESSON_RESP=$(curl -sf -X POST "$API_URL/api/progress/lesson" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"chapter_id":"ch1","lesson_id":"l1","score":85,"total_questions":5,"correct_answers":4}')
-if echo "$LESSON_RESP" | jq -e '.progress' > /dev/null 2>&1; then step "Complete lesson" "PASS"; else step "Complete lesson" "FAIL"; fi
-
-# ── Step 9: Progress Summary ────────────────
-echo "Step 9: Progress summary..."
-SUMMARY_RESP=$(curl -sf "$API_URL/api/progress/summary" -H "Authorization: Bearer $TOKEN")
-if echo "$SUMMARY_RESP" | jq -e '.stats' > /dev/null 2>&1; then step "Progress summary" "PASS"; else step "Progress summary" "FAIL"; fi
-
-# ── Step 10: Chat Sessions ──────────────────
-echo "Step 10: Chat sessions..."
-SESSIONS_RESP=$(curl -sf "$API_URL/api/chat/sessions" -H "Authorization: Bearer $TOKEN")
-if echo "$SESSIONS_RESP" | jq -e '.sessions' > /dev/null 2>&1; then step "Chat sessions" "PASS"; else step "Chat sessions" "FAIL"; fi
-
-# ── Results ─────────────────────────────────
-echo ""
-echo "═══════════════════════════════════════"
-echo "  E2E Test Results"
-echo "═══════════════════════════════════════"
-for s in "${STEPS[@]}"; do echo "  $s"; done
-echo "───────────────────────────────────────"
-echo "  Total: $((PASS + FAIL))  Passed: $PASS  Failed: $FAIL"
-echo "═══════════════════════════════════════"
-
-if [ "$FAIL" -gt 0 ]; then exit 1; else exit 0; fi
-```
-
-**Design decisions:**
-- Uses `curl` + `jq` — no dependencies beyond standard Linux tools
-- `API_URL` configurable via env var (default: production)
-- Unique test email per run using timestamp
-- 10 steps covering the full flow: health → signup → login → me → profile → curriculum save/load → lesson → progress → chat
-- Each step labeled PASS/FAIL
-- Exit 0 on all pass, exit 1 on any failure
-
----
-
-## Chunk D: CI pipeline (CRITERIA 19–22)
-
-### New Files
-
-#### `.github/workflows/test.yml` — NEW
-
-```yaml
-name: Run Tests
-
-on:
-  push:
-    branches: [main, routine-team-ai]
-  pull_request:
-    branches: [main]
-
-jobs:
-  backend-tests:
-    name: Backend (pytest)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server-python
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: pip
-          cache-dependency-path: server-python/requirements.txt
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Run pytest
-        env:
-          JWT_SECRET: ci-test-secret
-        run: python -m pytest tests/ -v --tb=short
-
-  frontend-tests:
-    name: Frontend (vitest)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run vitest
-        run: npm test
-```
-
-**Design decisions:**
-- Two parallel jobs — backend and frontend run independently for speed
-- Backend sets `JWT_SECRET` env var (required by `jwt_auth.py`)
-- Frontend uses `npm ci` for deterministic installs
-- Triggers on push to `main` and `routine-team-ai` (the work branch), plus PRs
-- Does NOT include E2E in CI (E2E hits live API — run manually or in separate scheduled job)
+#### `src/data/journeyEngine.js` — NO changes. This file continues to work for existing curriculum features. The new endpoints are a parallel system.
 
 ---
 
 ## Implementation Order
 
-1. **`server-python/requirements.txt`** — add pytest + httpx
-2. **`server-python/tests/__init__.py`** — create package marker
-3. **`server-python/tests/conftest.py`** — shared fixtures (mock_query, auth_token, mock_email)
-4. **`server-python/tests/test_health.py`** — 1 test, no mocking (quickest win)
-5. **`server-python/tests/test_auth.py`** — 10+ tests, heavy mocking
-6. **`server-python/tests/test_curriculum.py`** — 3+ tests, moderate mocking
-7. **`server-python/tests/test_progress.py`** — 4+ tests, moderate mocking
-8. **`server-python/tests/test_chat.py`** — 4+ tests, complex mocking (LLM, FalkorDB)
-9. **Run `pytest` from `server-python/`** — verify 30+ tests pass
-10. **`package.json`** — add vitest, @testing-library/react, jsdom, test scripts
-11. **`vite.config.js`** — add test config with jsdom
-12. **`src/tests/setup.js`** — mock localStorage + fetch
-13. **`src/tests/test_routing.test.jsx`** — 6 route smoke tests
-14. **Run `npm test`** — verify all vitest tests pass
-15. **`scripts/e2e_test.sh`** — create and chmod +x
-16. **Run e2e_test.sh** — verify against production API
-17. **`.github/workflows/test.yml`** — create CI workflow
-18. **Commit all files, push to `routine-team-ai`**
+### Phase 1: Backend — Database (Chunk A)
+1. Append `cognitive_profiles` and `card_interactions` DDL to `infra/lambda/migrate/handler.py`
+2. Call `POST /api/migrate` to create tables (or verify locally)
+3. Verify existing tables unaffected (AC 4)
 
----
+### Phase 2: Backend — Card Banks (data layer)
+4. Create `infra/lambda/cognitive/__init__.py`
+5. Create `infra/lambda/cognitive/card_banks.py` — port scenario data from `journeyEngine.js` with normalized keys
+6. Create `infra/lambda/journey/__init__.py`
 
-## Mocking Reference
+### Phase 3: Backend — Agent Logic (Chunk C)
+7. Create `infra/lambda/cognitive/agent.py` — `find_weakest_dimension()`, `generate_card_set()`, `update_dimensions_from_outcomes()`, `build_reflection()`
+8. Unit-test the agent math functions in isolation (deterministic, no DB)
 
-### `shared.db.query` mock patterns
+### Phase 4: Backend — Cognitive API (Chunk B)
+9. Create `infra/lambda/cognitive/handler.py` — `POST /api/cognitive/init`, `GET /api/cognitive/profile`
+10. Add cognitive routes to `server-python/main.py`
+11. Test `/api/cognitive/init` — 8 responses → profile created, 409 on re-init, 401 without auth
 
-Every Lambda handler calls `query(sql, params)` and gets back a list of `RealDictCursor` rows (plain dicts). Mock return values:
+### Phase 5: Backend — Journey API (Chunk C)
+12. Create `infra/lambda/journey/handler.py` — `POST /api/journey/next`, `POST /api/journey/outcomes`
+13. Add journey routes to `server-python/main.py`
+14. Test full backend loop: init → next → outcomes → next (targets new weakest)
 
-```python
-# For SELECT that returns rows
-mock_query.return_value = [{'id': 1, 'email': 'test@test.com', 'name': 'Test'}]
+### Phase 6: Backend Tests (Chunk G backend)
+15. Create `server-python/tests/test_cognitive.py` — 8+ tests:
+    - `test_init_profile_success` — 8 responses → profile with 8 dims
+    - `test_init_profile_already_exists` → 409
+    - `test_init_profile_unauthenticated` → 401
+    - `test_get_profile_success` → returns profile
+    - `test_get_profile_not_found` → 404
+    - `test_init_dimensions_correct_keys` — all 8 keys present
+    - `test_init_option_signals` — verify exact score adjustments per master spec
+    - `test_init_law3_penalty` — option 3 on high score → penalty applied
+16. Create `server-python/tests/test_journey.py` — 8+ tests:
+    - `test_next_returns_3_cards` — basic
+    - `test_next_targets_weakest` — verify targeting logic
+    - `test_next_no_profile` → appropriate error/suggestion
+    - `test_outcomes_updates_profile` — scores change after submission
+    - `test_outcomes_inserts_interactions` — card_interactions rows created
+    - `test_outcomes_idempotent` → 409 on duplicate agent_prompt_id
+    - `test_outcomes_law3_flag` — full_outsource on strong dim → law3_flags
+    - `test_loop_targets_new_weakest` — after outcomes, next targets different dim
 
-# For SELECT that returns nothing
-mock_query.return_value = []
+### Phase 7: Frontend — API + Context (Chunk F)
+17. Add 4 API functions to `src/api.js`
+18. Update `src/context/UserContext.jsx` — server-first cognitive profile loading + new action functions
 
-# For INSERT ... RETURNING
-mock_query.return_value = [{'id': 1}]
+### Phase 8: Frontend — Discovery Page (Chunk D)
+19. Create `src/pages/Discovery.jsx` — 8 scenario cards with 4 options each
+20. Create `src/pages/Discovery.css`
+21. Add `/discover` route to `src/App.jsx`
 
-# For queries called multiple times with different SQL
-mock_query.side_effect = [
-    [],                          # 1st call: SELECT user lookup
-    [{'id': 1, 'email': 'x'}],  # 2nd call: INSERT user
-    [],                          # 3rd call: INSERT profile
-    [],                          # 4th call: INSERT notification prefs
-    [{'id': 1}],                 # 5th call: INSERT email token
-]
-```
+### Phase 9: Frontend — Learn Page (Chunk E)
+22. Create `src/pages/Learn.jsx` — challenge player (concept → question → summary)
+23. Create `src/pages/Learn.css`
+24. Add `/learn` route to `src/App.jsx`
 
-### `bcrypt` mock pattern
-```python
-with patch('bcrypt.hashpw', return_value=b'hashed'):
-    with patch('bcrypt.checkpw', return_value=True):
-        # run test
-```
+### Phase 10: Frontend Tests (Chunk G frontend)
+25. Add `src/tests/test_discovery.test.jsx` — renders, card navigation, API calls
+26. Add `src/tests/test_learn.test.jsx` — renders, card sequence, outcome submission
 
-### Chat handler mock pattern
-```python
-with patch('chat.handler._get_clients') as mock_clients:
-    mock_openai = MagicMock()
-    mock_langfuse = MagicMock()
-    mock_falkor = MagicMock()
-    mock_falkor.get_relevant_context.return_value = []
-    mock_falkor.store_conversation_topic.return_value = None
-    mock_clients.return_value = (mock_openai, mock_langfuse, mock_falkor)
+### Phase 11: E2E Test (Chunk G E2E)
+27. Extend `scripts/e2e_test.sh` with Iteration 1 flow (after existing Iteration 0 steps):
+    - Step 11: `POST /api/cognitive/init` with 8 responses → profile created
+    - Step 12: `GET /api/cognitive/profile` → 8 dimensions returned
+    - Step 13: `POST /api/journey/next` → 3 cards returned
+    - Step 14: `POST /api/journey/outcomes` → profile updated + reflection
+    - Step 15: `POST /api/journey/next` (2nd) → different target dimension
 
-    with patch('chat.handler.traced_completion') as mock_llm:
-        mock_llm.return_value = {
-            'choices': [{'message': {'content': 'Test response'}}],
-            'model': 'test', 'usage': {'total_tokens': 10}
-        }
-        # run test
-```
+### Phase 12: Regression + Law Compliance (Chunks G + Law)
+28. Run full test suite: `pytest` (28 existing + 16 new = 44+), `vitest` (6 existing + 2 new = 8+), `e2e_test.sh` (10 existing + 5 new = 15 steps)
+29. Law 1 check: verify no concept card suggests delegating a strong dimension to AI
+30. Law 3 check: verify `full_outsource` on high-score dim → `law3_flags` populated in reflection
+31. Law 2 check: verify challenges target weakest dimension (automatic from agent logic)
 
 ---
 
 ## Testing Notes for Tester
 
-### Backend Tests
-- Run from `server-python/` directory: `python -m pytest tests/ -v`
-- All 30+ tests should pass without any database connection
-- If `ModuleNotFoundError: No module named 'shared'`, check `conftest.py` sys.path setup
-- If `JWT_SECRET` errors, check env var is set in conftest
+### Backend Tests to Verify
+- **`POST /api/cognitive/init`**: Send 8 responses with known option selections. Verify exact dimension scores match master spec option semantics (AC 5, 8, 9).
+- **`POST /api/cognitive/init` 409**: Call twice for same user → second returns 409 (AC 7).
+- **`GET /api/cognitive/profile` 404**: New user with no discovery → 404 (AC 6).
+- **Dimension keys**: Response must use exactly `creative`, `strategic`, `analytical`, `operational`, `communication`, `detail`, `empathetic`, `technical` — NOT `detail_accuracy` or `technical_fluency` (AC 8).
+- **`POST /api/journey/next`**: Returns `{session_id, agent_prompt_id, challenge_title, cards: [3 items]}`. Cards are `concept`, `question`, `summary` types. Targets weakest dimension (AC 10).
+- **`POST /api/journey/outcomes`**: After submitting outcomes, profile scores update. `card_interactions` rows exist in DB. `law3_flags` populated when `full_outsource` selected on dim with score > 0.6 (AC 11, 12, 13, 14).
+- **Idempotency**: Same `agent_prompt_id` submitted twice → 409 on second (AC 14).
 
-### Frontend Tests
-- Run from repo root: `npm test`
-- If `jsdom` errors, verify `@testing-library/react` and `jsdom` are in devDependencies
-- Route smoke tests should render 6 pages without crash
-- Tests mock `UserContext` — no real API calls
+### Frontend Tests to Verify
+- `/discover` route renders with RequireAuth guard
+- 8 scenario cards shown one at a time with "Card N of 8" progress
+- Each card has 4 options with correct semantics text
+- After card 8: CognitiveRadar appears with profile data
+- "Start Learning" navigates to `/learn`
+- `/learn` route renders challenge player
+- 3 cards shown in sequence (concept → question → summary)
+- After completing: reflection message + updated radar visible
+- "Next Challenge" generates a new card set
 
-### E2E Tests
-- Run: `API_URL=https://... ./scripts/e2e_test.sh`
-- Default target is production API
-- Requires `curl` and `jq` on PATH
-- Creates a real user account each run (uses timestamp-based email)
-- All 10 steps should pass
+### E2E Full Loop
+- Signup → discovery (8 cards) → radar reveal → first challenge (3 cards) → outcomes → profile update → second challenge → targets different dimension
+- Old routes still work: `/onboarding`, `/curriculum`, `/dashboard` (AC 24 — backward compat)
 
-### CI Pipeline
-- Triggers on push to `main` or `routine-team-ai`
-- Backend job: sets up Python 3.12, installs deps, runs pytest
-- Frontend job: sets up Node 20, installs deps, runs vitest
-- Both jobs run in parallel
+### Law Compliance (P0)
+- **Law 1 (AC 40)**: Given `creative` score 0.85, no generated card text suggests delegating creative work to AI. Test by seeding a profile with high `creative`, calling `/api/journey/next`, inspecting all card content.
+- **Law 3 (AC 41)**: Submit outcomes with `option_path: "full_outsource"` on a dimension where `score > 0.6`. Verify `reflection.law3_flags` includes that dimension.
+- **Law 2 (AC 42)**: Challenge always targets the user's weakest dimension (automatic from `find_weakest_dimension` logic).
 
-### Edge Cases to Verify
-- Signup with duplicate email returns 400 (not 500)
-- Login with wrong password returns 401 (not 500)
-- Auth endpoints without token return 401
-- Curriculum load with no data returns `{curriculum: null}` (not 404)
-- Progress summary with no data returns empty arrays (not 404)
+### Edge Cases
+- User navigates to `/learn` before completing discovery → prompt to go to `/discover`
+- User refreshes mid-discovery → progress lost (acceptable for Iteration 1; resumable discovery is Iteration 7)
+- All 8 discovery responses select same option → profile still has 8 valid dimensions
+- Outcomes submission with empty interactions array → 400
+- Concurrent `/api/journey/next` calls → each returns independent session_id
+
+### Existing Tests — Must Not Regress
+- 28 pytest tests from Iteration 0 → all still pass
+- 6 vitest route smoke tests → all still pass
+- 10 E2E steps → all still pass
