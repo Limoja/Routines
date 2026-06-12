@@ -2,422 +2,404 @@
 
 ## Based on PO Review: 2026-06-12
 ## Summary
-
-**Two chunks:**
-
-**Chunk 1 (P0) — Deploy Iteration 1 code to production.** The merged code at `3f69f75` has 44 pytest passing, 6 vitest passing, and all 42 acceptance criteria verified at code level. It must be deployed and the DB migration run before any new features are built. This is an ops task — no new code files, just build + push + migrate.
-
-**Chunk 2 (P1) — Route restructure + JourneyDashboard + quality bar.** If deployment is blocked, build the next most impactful set: unify navigation to 5 items per spec H.1, make `/` the JourneyDashboard for auth'd users, redirect old routes, add global Toast and ErrorBoundary components, and add global 401 → `/login` redirect per B.3.
+Build the Agent Intelligence layer: explore/exploit policy with dynamic ratio, 3A depth selection (anchor/adapt/author), full outcome ingestion per card type, complete Law 3 enforcement chain, anti-pigeon-holing safeguards, two new database tables (`agent_prompts`, `reward_function_state`), and three new API endpoints. This transforms the agent from "always target weakest with 3 identical cards" into a real adaptive learning system.
 
 ---
 
-## Chunk 1: Deployment (P0 — AC 1–9)
+## Backend Changes
 
-### No New Files — Ops Steps Only
+### Database Changes
 
-The Developer should execute these steps in order:
+Append to `infra/lambda/migrate/handler.py` SCHEMA string (after existing `cognitive_profiles` and `card_interactions` blocks):
 
-#### Step 1: Build and push API container
-```bash
-# From AIInstructor repo root, on main branch at 3f69f75
-docker build -f Dockerfile -t pamousk.azurecr.io/ai-instructor-api:latest .
-docker tag pamousk.azurecr.io/ai-instructor-api:latest pamousk.azurecr.io/ai-instructor-api:3f69f75
-docker push pamousk.azurecr.io/ai-instructor-api:latest
-docker push pamousk.azurecr.io/ai-instructor-api:3f69f75
-```
-AC 1: API image rebuilt from main and pushed to ACR.
+```sql
+-- ═══════════════════════════════════════════
+-- Agent Intelligence: reward function state + agent prompts
+-- ═══════════════════════════════════════════
 
-#### Step 2: Build and push web container
-```bash
-docker build -f Dockerfile.frontend -t pamousk.azurecr.io/ai-instructor-web:latest .
-docker tag pamousk.azurecr.io/ai-instructor-web:latest pamousk.azurecr.io/ai-instructor-web:3f69f75
-docker push pamousk.azurecr.io/ai-instructor-web:latest
-docker push pamousk.azurecr.io/ai-instructor-web:3f69f75
-```
-AC 2: Web image rebuilt and pushed to ACR.
+CREATE TABLE IF NOT EXISTS reward_function_state (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  version INT DEFAULT 1,
+  weights JSONB NOT NULL DEFAULT '{}',
+  confidence_vector JSONB NOT NULL DEFAULT '{}',
+  total_interactions INT DEFAULT 0,
+  last_exploration TIMESTAMPTZ,
+  exploration_queue JSONB DEFAULT '[]',
+  computed_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-#### Step 3: Update Azure Container Apps
-```bash
-az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+CREATE TABLE IF NOT EXISTS agent_prompts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  session_id UUID,
+  mode VARCHAR NOT NULL DEFAULT 'exploit',
+  target_dimensions JSONB DEFAULT '{}',
+  preserve_dimensions JSONB DEFAULT '{}',
+  depth VARCHAR DEFAULT 'adapt',
+  epoch_skill VARCHAR,
+  scenario_context JSONB DEFAULT '{}',
+  cards_requested JSONB DEFAULT '[]',
+  with_ai_paths BOOLEAN DEFAULT TRUE,
+  generated_at TIMESTAMPTZ DEFAULT NOW(),
+  outcome_data JSONB
+);
 
-az containerapp update \
-  --name ai-instructor-api \
-  --resource-group rg-ai-instructor \
-  --image pamousk.azurecr.io/ai-instructor-api:latest
-
-az containerapp update \
-  --name ai-instructor-web \
-  --resource-group rg-ai-instructor \
-  --image pamousk.azurecr.io/ai-instructor-web:latest
-```
-AC 3: Both container apps updated to new image revisions.
-
-#### Step 4: Run DB migration
-```bash
-curl -X POST https://ai-inst-production-api.blackrock-3f2021d2.ukwest.azurecontainerapps.io/api/migrate
-```
-AC 4: `cognitive_profiles` and `card_interactions` tables created. Response: `{"message": "Migration complete"}`.
-
-#### Step 5: Verify
-```bash
-# AC 5: Health check
-curl https://ai-inst-production-api.../api/health
-# Expected: {"status":"ok",...}
-
-# AC 6: Cognitive init returns 401 (not 404)
-curl -X POST https://ai-inst-production-api.../api/cognitive/init
-# Expected: 401 {"error":"Authentication required"}
-
-# AC 7: Journey next returns 401 (not 404)
-curl -X POST https://ai-inst-production-api.../api/journey/next
-# Expected: 401 {"error":"Authentication required"}
+CREATE INDEX IF NOT EXISTS idx_agent_prompts_user ON agent_prompts(user_id, generated_at);
+CREATE INDEX IF NOT EXISTS idx_reward_state_user ON reward_function_state(user_id);
 ```
 
-#### Step 6: Run E2E
-```bash
-API_URL=https://ai-inst-production-api.blackrock-3f2021d2.ukwest.azurecontainerapps.io ./scripts/e2e_test.sh
-```
-AC 8: Steps 11–15 pass. AC 9: Steps 1–10 still pass.
+### API Endpoints
 
----
+| Method | Path | Purpose | Request Body | Response |
+|--------|------|---------|-------------|----------|
+| `GET` | `/api/cognitive/summary` | Readable strengths/weaknesses/uncertain summary | — | `{strengths: [...], weaknesses: [...], uncertain: [...]}` |
+| `GET` | `/api/journey/stage` | Current journey stage + mastery eligibility | — | `{stage, mastery_eligible, avg_confidence, avg_score}` |
+| `POST` | `/api/journey/discovery` | Alternative discovery submission (creates profile) | `{responses: [{dimension, option_selected, option_path}]}` | `{profile: {...}}` |
 
-## Chunk 2: Route Restructure + Quality Bar (P1 — AC 10–15)
+**Modified existing endpoints:**
 
-Only execute this chunk if deployment is blocked. This chunk does NOT require deployment to verify — it can be tested locally.
+| Method | Path | What Changes |
+|--------|------|-------------|
+| `POST` | `/api/journey/next` | Now uses explore/exploit policy, creates `agent_prompts` row, returns `mode` and `depth` fields |
+| `POST` | `/api/journey/outcomes` | Full E.4 per-card-type ingestion, Law 3 score -0.02 + forced preserve target, updates `reward_function_state` |
 
 ### New Files
 
-#### `src/components/Toast.jsx` — Global notification system (per B.3 #9)
-- **Purpose:** Provides a global toast notification system. Every mutation outcome (save, error, success) surfaces feedback.
-- **Pattern:** React context + provider. Uses `createContext` for `ToastContext`.
-- **Key exports:**
-  - `ToastProvider` — wraps app, manages toast queue state
-  - `useToast()` — hook returning `{success(msg), error(msg), info(msg), warning(msg)}`
-- **State:**
-  - `toasts: [{id, message, type, timestamp}]` — active toast queue (max 5)
-- **Rendering:** Fixed position container (bottom-right or top-right). Each toast auto-dismisses after 4 seconds. CSS animation for enter/exit.
-- **CSS:** `src/components/Toast.css`
+#### `infra/lambda/cognitive/policy.py` — Explore/Exploit + Depth Selection + Anti-Pigeon-Holing
+The core agent intelligence module. This is where the IRL math lives.
 
-#### `src/components/ErrorBoundary.jsx` — React error boundary (per B.3 #7)
-- **Purpose:** Catches render errors from any child component. Prevents full-page white screen from malformed API data.
-- **Pattern:** Class component with `componentDidCatch` + `getDerivedStateFromError`.
-- **Props:** `children`
-- **State:** `hasError: bool`, `error: Error|null`
-- **Fallback render:** Friendly error message with "Try again" button that resets error state.
-- **Wraps:** The entire `<App />` in `main.jsx`.
+Key functions:
 
-#### `src/pages/JourneyDashboard.jsx` — New home page for authenticated users (per H.1)
-- **Purpose:** Replaces old Dashboard (18 sections, 6 API calls) with focused learning hub: CognitiveRadar + "Your Next Challenge" CTA + interaction count.
-- **Uses:** `useUser` context for `cognitiveProfile`, `cognitiveProfileSummary`, `authUser`
-- **State:**
-  - `loading: bool` — API calls in flight
-  - `hasDiscovery: bool` — whether user has completed discovery
-- **Layout (for auth'd users with discovery):**
-  1. **Header section:** "Your Cognitive Profile" with journey stage badge (discovery/growth/mastery)
-  2. **CognitiveRadar** — full 8-dimension radar with confidence rendering
-  3. **Stats bar:** Total interactions count, journey stage
-  4. **CTA card:** "Your Next Challenge" button → navigates to `/learn`
-  5. **AI Tutor button:** Quick link to `/chat`
-- **Layout (for auth'd users WITHOUT discovery):**
-  1. Welcome message: "Let's discover how you think"
-  2. CTA: "Start Discovery" button → navigates to `/discover`
-- **No `.catch(() => {})`** — all API errors surface via toast or error state.
-- **CSS:** `src/pages/JourneyDashboard.css`
+- **`compute_explore_ratio(dimensions)`** (per E.2)
+  - Count dimensions where `confidence < 0.5 OR samples < 5` → `low_conf_count`
+  - `explore_ratio = clamp(low_conf_count / 8, 0.2, 0.5)`
+  - Returns `{explore_ratio, exploit_ratio, low_confidence_dims: [...], high_confidence_dims: [...]}`
+
+- **`decide_mode(dimensions, reward_state)`** (per E.2)
+  - Compute explore_ratio
+  - Dynamic shift: if `total_interactions < 10` → bias toward explore (add +0.15 to ratio); if `total_interactions > 50` → bias toward exploit (subtract 0.10)
+  - Check forced re-exploration: if `reward_state.total_interactions > 0` and `reward_state.total_interactions % 25 == 0` → force explore (per E.6)
+  - Deterministic for testability: if `explore_ratio > 0.5` → explore; else → exploit (NOT random in Iteration 1 — make it deterministic for tests)
+  - Returns `{mode: "explore"|"exploit", explore_ratio, reasoning: "..."}`
+
+- **`select_target_dimension(mode, dimensions, reward_state)`** (per E.2 + E.6)
+  - If explore: pick the dimension with lowest confidence from `reward_state.exploration_queue` (or lowest confidence from `dimensions` if queue empty)
+  - If exploit: pick the dimension with lowest score among dims with `confidence >= 0.4` (fall back to all if none qualify)
+  - Law 3 preserve check: if `reward_state` has a pending preserve dimension, override to target that dimension instead (per E.5 step 2)
+  - Returns `{target, preserve: [...], reasoning: "..."}`
+
+- **`select_depth(target_dim_key, dimensions)`** (per E.3)
+  - `score < 0.3 → "anchor"`, `score < 0.6 → "adapt"`, `score >= 0.6 → "author"`
+  - Returns `"anchor" | "adapt" | "author"`
+
+- **`compute_preserve_dimensions(dimensions)`** (per Law 1)
+  - All dims with `score > 0.7` are preserve dimensions
+  - Returns `{dim_key: "strong", ...}`
+
+- **`apply_confidence_ceiling(dimensions)`** (per E.6)
+  - Clamp all `confidence` values to max 0.95
+  - Returns updated dimensions
+
+- **`update_exploration_queue(dimensions, reward_state)`** (per E.6)
+  - Rebuild queue: sort dims by `(confidence ASC, samples ASC)`
+  - If any dim has `trend == "declining"` and `score > 0.6`, move to front of queue (Law 1 watch per E.6)
+  - Returns `["dim_key", ...]` ordered list
+
+- **`compute_trend(dim_key, card_interactions)`** (per E.4)
+  - If < 10 total samples for this dim → `"stable"`
+  - Compare mean score of last 5 interactions to mean of prior 5
+  - If delta > +0.05 → `"improving"`, if delta < -0.05 → `"declining"`, else `"stable"`
+  - Returns `"improving" | "stable" | "declining"`
+
+#### `infra/lambda/cognitive/ingestion.py` — Full Outcome Ingestion Rules (per E.4)
+
+Key functions:
+
+- **`ingest_scenario_outcome(dim, interaction)`**
+  - Option 1 (`without_ai`): `score += 0.03`, `confidence += 0.08`, `samples += 1`
+  - Option 2 (`human_leads`): `score += 0.02`, `confidence += 0.08`, `samples += 1`
+  - Option 3 (`full_outsource`): if `score > 0.6` → Law 3 (see below); else `score += 0.01` (neutral-to-small positive on technical), `confidence += 0.08`, `samples += 1`
+  - Option 4 (`ai_heavy`): `operational.score += 0.02`, `technical.score += 0.02`, `confidence += 0.08`, `samples += 1`
+  - Returns `(updated_dim, law3_violation: bool)`
+
+- **`ingest_question_outcome(dim, correct)`**
+  - Correct: `score += 0.02`, `confidence += 0.05`, `samples += 1`
+  - Incorrect: `score -= 0.01`, `confidence += 0.05`, `samples += 1`
+  - Returns `updated_dim`
+
+- **`ingest_prompt_lab_outcome(dim, score_0_100, current_samples)`**
+  - `alpha = min(0.3, 1.0 / (current_samples + 1))`
+  - `score = score * (1 - alpha) + (score_0_100 / 100) * alpha`
+  - `confidence += 0.06`, `samples += 1`
+  - Returns `updated_dim`
+
+- **`ingest_practice_outcome(dim, score_0_100, current_samples)`**
+  - Same formula as prompt_lab per E.4
+  - Returns `updated_dim`
+
+- **`ingest_concept_outcome(dim)`**
+  - `confidence += 0.03`, no score change (reading only)
+  - Returns `updated_dim`
+
+- **`ingest_summary_outcome(dim)`**
+  - `confidence += 0.02`, no score change (reflection only)
+  - Returns `updated_dim`
+
+- **`apply_law3(dim_key, dim, interaction)`** (per E.5)
+  - Trigger: `option_path == "full_outsource"` AND `dim.score > 0.6`
+  - Action 1: `dim.score -= 0.02` (reward signal drop per E.5)
+  - Action 2: Set `law3_violation = True` in `cognitive_signal`
+  - Action 3: Return `preserve_target = dim_key` (caller uses this to force next challenge)
+  - Returns `(updated_dim, law3_violation, preserve_target: str|null)`
 
 ### Modified Files
 
-#### `src/main.jsx` — Wrap with ErrorBoundary and ToastProvider
-```jsx
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
-import { UserProvider } from './context/UserContext'
-import { ToastProvider } from './components/Toast'
-import ErrorBoundary from './components/ErrorBoundary'
-import App from './App.jsx'
-import './index.css'
+#### `infra/lambda/cognitive/agent.py` — Major refactor
+**Replace** the current simple functions with calls to the new modules:
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <ErrorBoundary>
-      <BrowserRouter>
-        <UserProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
-        </UserProvider>
-      </BrowserRouter>
-    </ErrorBoundary>
-  </StrictMode>,
-)
-```
-Order: ErrorBoundary outermost (catches all render errors), then BrowserRouter, then UserProvider, then ToastProvider.
+- `find_weakest_dimension()` → **deprecated**. Replaced by `select_target_dimension()` from `policy.py`.
+- `generate_card_set(target_dimension)` → **enhanced** to accept `depth` parameter:
+  - `depth="anchor"` → concept + question + summary cards with introductory content
+  - `depth="adapt"` → concept + question + summary cards with practice-oriented content (current templates)
+  - `depth="author"` → concept + question + summary cards with advanced/create-oriented content
+  - Card templates need depth variants added to `card_banks.py`
+  - Returns same structure PLUS `mode`, `depth`, `target_dimensions`, `preserve_dimensions` fields
+- `update_dimensions_from_outcomes()` → **replaced** by calling functions from `ingestion.py`:
+  - Route to the correct ingest function based on `card_type`
+  - Collect Law 3 violations and preserve targets
+  - Apply confidence ceiling from `policy.py`
+  - Returns `(updated_dims, law3_flags, preserve_targets)`
+- `build_reflection()` → **enhanced** with explicit preserve messages per E.5:
+  - If `preserve_targets` non-empty, include: `"You're great at {dim_label} — don't outsource your superpower"` for each
 
-#### `src/api.js` — Global 401 → redirect with toast (per B.3 #2)
-**Current code** (lines 27–29):
-```javascript
-if (res.status === 401) {
-  clearToken()
-  throw new Error('UNAUTHORIZED')
-}
-```
-**Replace with:**
-```javascript
-if (res.status === 401) {
-  clearToken()
-  // Redirect to login with toast (import toast from context)
-  // We can't use React hooks here, so we use a module-level callback
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('api:401', { detail: 'Session expired. Please log in again.' }))
-  }
-  throw new Error('UNAUTHORIZED')
-}
-```
-Then in `App.jsx` or a dedicated component, listen for `api:401` event and show toast + redirect.
+#### `infra/lambda/cognitive/card_banks.py` — Add depth variants
+Add `CONCEPT_TEMPLATES_ANCHOR`, `CONCEPT_TEMPLATES_AUTHOR`, and similarly for questions and summaries. Each dimension gets 3 depth levels of content:
 
-**Alternative approach (simpler):** Add event listener in `UserContext.jsx`:
-```javascript
-useEffect(() => {
-  const handle401 = (e) => {
-    logoutUser()
-    navigate('/login')
-    // Toast will be shown via ToastProvider
-  }
-  window.addEventListener('api:401', handle401)
-  return () => window.removeEventListener('api:401', handle401)
-}, [logoutUser, navigate])
+- **Anchor**: "Here's what {dim} means..." — introduces concepts, explains why it matters
+- **Adapt**: (current templates) — guided practice, "How would you apply this?"
+- **Author**: "Create something using your {dim} strength..." — open-ended, synthesis level
+
+Add a helper function:
+```python
+def get_concept_template(dim_key, depth="adapt"):
+    """Return concept template for the given dimension and depth level."""
 ```
 
-#### `src/App.jsx` — Route restructure (per H.1)
+#### `infra/lambda/journey/handler.py` — Major refactor
 
-**Key changes:**
+**`_handle_next()`** refactored:
+1. Fetch `cognitive_profiles.dimensions` for user
+2. Fetch or create `reward_function_state` row for user (initial weights = current dimension scores)
+3. Call `decide_mode(dimensions, reward_state)` → get mode
+4. Call `select_target_dimension(mode, dimensions, reward_state)` → get target + preserve dims
+5. Call `select_depth(target, dimensions)` → get depth
+6. Call `compute_preserve_dimensions(dimensions)` → get preserve map
+7. Generate card set with `depth` parameter
+8. **Insert `agent_prompts` row** with full decision context: `mode`, `target_dimensions`, `preserve_dimensions`, `depth`, `cards_requested`, `scenario_context`
+9. Return response including `mode`, `depth`, `agent_prompt_id` (from the new row's UUID)
 
-1. **`/` renders JourneyDashboard for authenticated users** (AC 11):
-```jsx
-<Route path="/" element={
-  authUser ? <JourneyDashboard /> : <Home />
-} />
-```
-Remove the separate `/dashboard` route (redirect it to `/`).
+**`_handle_outcomes()`** refactored:
+1. Check idempotency (unchanged)
+2. Fetch current profile dimensions
+3. Route each interaction to the correct `ingest_*` function from `ingestion.py`
+4. Collect Law 3 violations and `preserve_targets`
+5. Apply `apply_confidence_ceiling()` from `policy.py`
+6. Compute trends (simple: if enough samples, compute delta; else stable)
+7. Insert `card_interactions` rows with `cognitive_signal` including `law3_violation: true` when applicable
+8. Update `cognitive_profiles` dimensions + total_interactions
+9. **Update `reward_function_state`**: sync weights to current scores, update exploration queue, set `preserve_target` if Law 3 triggered
+10. Build enhanced reflection with Law 3 preserve messages
+11. Return `{profile, reflection}`
 
-2. **Redirect old routes** (AC 12):
-```jsx
-<Route path="/onboarding" element={<Navigate to="/discover" replace />} />
-<Route path="/curriculum/generate" element={<Navigate to="/discover" replace />} />
-<Route path="/curriculum" element={<Navigate to="/learn" replace />} />
-<Route path="/lesson/:chapterId/:lessonId" element={<Navigate to="/learn" replace />} />
-<Route path="/epoch-lesson" element={<Navigate to="/learn" replace />} />
-<Route path="/learning-path" element={<Navigate to="/" replace />} />
-<Route path="/courses" element={<Navigate to="/" replace />} />
-<Route path="/dashboard" element={<Navigate to="/" replace />} />
-<Route path="/about" element={<Navigate to="/" replace />} />
-```
+#### `infra/lambda/cognitive/handler.py` — Add 2 new endpoints
 
-3. **Keep these routes unchanged:**
-- `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/verify-email` — auth pages
-- `/discover` — Discovery scenarios (RequireAuth)
-- `/learn` — Challenge player (RequireAuth)
-- `/practice` — Practice area (RequireAuth)
-- `/chat` — AI Chat
-- `*` — NotFound
+- `GET /api/cognitive/summary`:
+  1. Fetch `cognitive_profiles.dimensions` for user
+  2. Sort dims by score descending
+  3. `strengths` = top 3 dims with score > 0.6
+  4. `weaknesses` = bottom 2 dims with score < 0.4
+  5. `uncertain` = dims with confidence < 0.5
+  6. Return `{strengths: [{key, label, score}], weaknesses: [...], uncertain: [...]}`
 
-4. **Remove imports** for deprecated page components that are now just redirects:
-- `Onboarding`, `Dashboard`, `CurriculumGeneration`, `Curriculum`, `Lesson`, `EpochLesson`, `LearningPath`, `Courses`, `About`, `ToolsExplorer`
-- These components stay in the repo but are no longer directly rendered — they're redirect targets only.
+- `POST /api/journey/discovery`:
+  1. Same as `POST /api/cognitive/init` but also creates `reward_function_state` row
+  2. Accepts `{responses: [...]}` with 8 discovery responses
+  3. Creates `cognitive_profiles` row (409 if exists)
+  4. Creates `reward_function_state` row with initial weights = dimension scores, empty exploration queue
+  5. Returns `{profile: {...}, reward_state: {...}}`
 
-5. **Update FULLSCREEN_PATHS** — add `/` when auth'd (JourneyDashboard is fullscreen).
+#### `server-python/main.py` — Add 3 new routes
 
-6. **Add 401 event listener** for global redirect:
-```jsx
-import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useToast } from './components/Toast'
+```python
+# ── Cognitive summary route ────────────────────────
+@app.get("/api/cognitive/summary")
+async def cognitive_summary(request: Request):
+    return _to_response(cognitive_handler(_make_event(request), None))
 
-// Inside App component:
-const navigate = useNavigate()
-const toast = useToast()
+# ── Journey discovery + stage routes ───────────────
+@app.post("/api/journey/discovery")
+async def journey_discovery(request: Request):
+    body = await request.json()
+    return _to_response(journey_handler(_make_event(request, body), None))
 
-useEffect(() => {
-  const handle401 = (e) => {
-    toast.error(e.detail || 'Session expired')
-    navigate('/login', { replace: true })
-  }
-  window.addEventListener('api:401', handle401)
-  return () => window.removeEventListener('api:401', handle401)
-}, [navigate, toast])
-```
-
-#### `src/components/Navbar.jsx` — Reduce to 5 items (per H.1, AC 10)
-
-**Current navbar links** (conditionals for profile/curriculum):
-- Home, Dashboard, Curriculum, Paths, Lessons, Practice, Tools, AI Chat, About = 9 items
-
-**New navbar links** (exactly 5):
-| Link | Path | Condition |
-|------|------|-----------|
-| Home | `/` | Always |
-| Learn | `/learn` | Auth'd only |
-| Practice | `/practice` | Auth'd only |
-| Chat | `/chat` | Always |
-| Profile | `/profile` | Auth'd only (or user dropdown) |
-
-**Implementation:**
-```jsx
-const NAV_LINKS = [
-  { path: '/', label: 'Home', authRequired: false },
-  { path: '/learn', label: 'Learn', authRequired: true },
-  { path: '/practice', label: 'Practice', authRequired: true },
-  { path: '/chat', label: 'Chat', authRequired: false },
-]
-
-// In render:
-{NAV_LINKS.map(link => {
-  if (link.authRequired && !authUser) return null
-  return (
-    <Link key={link.path} to={link.path}
-      className={`nav-link ${isActive(link.path) ? 'active' : ''}`}
-      onClick={() => setMenuOpen(false)}>
-      {link.label}
-    </Link>
-  )
-})}
+@app.get("/api/journey/stage")
+async def journey_stage(request: Request):
+    return _to_response(journey_handler(_make_event(request), None))
 ```
 
-The 5th item ("Profile") becomes the auth user button/dropdown (replacing the current "username (score)" button):
-```jsx
-{authUser ? (
-  <>
-    <Link to="/profile" className="btn btn-primary nav-cta"
-      onClick={() => setMenuOpen(false)}>
-      {authUser.name || 'Profile'}
-    </Link>
-    <button className="nav-link nav-logout" onClick={handleLogout}>
-      Log out
-    </button>
-  </>
-) : (
-  <>
-    <Link to="/login" className="nav-link" onClick={() => setMenuOpen(false)}>Log in</Link>
-    <Link to="/signup" className="btn btn-primary nav-cta" onClick={() => setMenuOpen(false)}>
-      Get Started
-    </Link>
-  </>
-)}
+#### `server-python/tests/conftest.py` — Update mock_query fixture
+Add patching for the new handler modules:
+```python
+import cognitive.handler as cog_mod
+import journey.handler as jour_mod
+# Add to mock_query fixture:
+cog_mod.query = mock
+jour_mod.query = mock
 ```
 
-**Remove:** All references to `profile`, `curriculum`, `learning-path`, `epoch-lesson`, `tools`, `about`, `courses`, `dashboard` from navbar links.
+---
 
-#### `src/pages/Home.jsx` — Update CTAs for new routes
-- Line 38: `<Link to="/dashboard"` → `<Link to="/"`
-- Line 42: `<Link to="/signup"` → stays `/signup` but text changes to "Start Your Discovery" (per D Stage 1)
-- Line 146: `<Link to={profile ? '/dashboard' : '/onboarding'}` → `<Link to={profile ? '/' : '/signup'}`
-- Hero badge: "Adaptive AI Learning" → "Discover How You Think" (per H.5 tone rules)
-- Hero headline: "Become 10X More Effective with AI" → "Discover How YOU Think" (per H.5 — discovery framing)
-- Hero subtitle: Update to emphasize discovery, not assessment
-- Steps section: Update 4 steps to reflect discovery → radar → challenge → loop (not assessment → score → path → lessons)
-- Remove "AI Readiness Score" references — replaced by cognitive dimensions
-- CTA: "Start Free Assessment" → "Start Your Discovery" (per H.5 — never "assessment", "test")
+## Frontend Changes
 
-#### `src/context/UserContext.jsx` — Add 401 listener
-- Import `useNavigate` from react-router-dom (via a custom hook, since UserContext doesn't have router access)
-- Add `window.addEventListener('api:401', ...)` in UserProvider effect
-- On 401 event: call `logoutUser()`, navigate to `/login`
-- Use toast to show "Session expired" message
+### No frontend changes in this chunk
+This chunk is entirely backend agent intelligence. The frontend (Discovery.jsx, Learn.jsx, JourneyDashboard.jsx) already consumes the journey API. The enhanced `/api/journey/next` response includes `mode` and `depth` fields, which the frontend can display in future chunks.
+
+The only frontend-visible change: the `/api/journey/next` response now includes `mode` ("explore"|"exploit") and `depth` ("anchor"|"adapt"|"author") fields. Learn.jsx should display these as badges on the challenge view, but this is optional for this chunk — the API will work regardless.
 
 ---
 
 ## Implementation Order
 
-### If Deployment is Possible (Chunk 1):
-1. Build API Docker image from main (`3f69f75`)
-2. Build web Docker image from main
-3. Push both to ACR
-4. Update Azure Container Apps to new images
-5. Run `POST /api/migrate` against production
-6. Verify health + new endpoints return 401 (not 404)
-7. Run full E2E script (all 15 steps)
-8. If all pass → proceed to Chunk 2 as the next design chunk
+### Phase 1: Database (AC 1–3)
+1. Append `reward_function_state` and `agent_prompts` DDL to `infra/lambda/migrate/handler.py`
+2. Test migration is idempotent (run against test schema)
 
-### If Deployment is Blocked (Chunk 2):
+### Phase 2: Agent Intelligence Core (AC 4–12, 17–23)
+3. Create `infra/lambda/cognitive/policy.py`:
+   - `compute_explore_ratio()`
+   - `decide_mode()`
+   - `select_target_dimension()`
+   - `select_depth()`
+   - `compute_preserve_dimensions()`
+   - `apply_confidence_ceiling()`
+   - `update_exploration_queue()`
+4. Create `infra/lambda/cognitive/ingestion.py`:
+   - `ingest_scenario_outcome()`
+   - `ingest_question_outcome()`
+   - `ingest_prompt_lab_outcome()`
+   - `ingest_practice_outcome()`
+   - `ingest_concept_outcome()`
+   - `ingest_summary_outcome()`
+   - `apply_law3()`
+5. Update `infra/lambda/cognitive/card_banks.py`:
+   - Add depth variants (anchor, adapt, author) for concept/question/summary templates
+   - Add `get_concept_template()`, `get_question_template()`, `get_summary_template()` helper functions
 
-#### Phase 1: Quality Bar Components (AC 13–15)
-1. Create `src/components/Toast.jsx` + `Toast.css` — global toast system
-2. Create `src/components/ErrorBoundary.jsx` — React error boundary
-3. Modify `src/main.jsx` — wrap with ErrorBoundary + ToastProvider
-4. Modify `src/api.js` — dispatch `api:401` custom event on 401
+### Phase 3: Refactor Existing Agent (AC 4–5, 10–12, 17–20)
+6. Refactor `infra/lambda/cognitive/agent.py`:
+   - Replace `find_weakest_dimension()` calls with `select_target_dimension()`
+   - Enhance `generate_card_set()` to accept and use `depth` parameter
+   - Replace `update_dimensions_from_outcomes()` with calls to `ingestion.py` functions
+   - Enhance `build_reflection()` with Law 3 preserve messages
+7. Refactor `infra/lambda/journey/handler.py`:
+   - `_handle_next()`: add explore/exploit decision, agent_prompts row creation, depth selection
+   - `_handle_outcomes()`: route to per-type ingestion, apply Law 3 fully, update reward_function_state
 
-#### Phase 2: Route Restructure (AC 12)
-5. Modify `src/App.jsx` — add redirect routes for all old paths
-6. Modify `src/App.jsx` — remove direct imports for deprecated page components
-7. Modify `src/App.jsx` — update `/` to render JourneyDashboard for auth'd users
+### Phase 4: New Endpoints (AC 24–26)
+8. Add `GET /api/cognitive/summary` to `infra/lambda/cognitive/handler.py`
+9. Add `POST /api/journey/discovery` and `GET /api/journey/stage` to `infra/lambda/journey/handler.py`
+10. Add 3 new routes to `server-python/main.py`
+11. Update `server-python/tests/conftest.py` mock fixtures
 
-#### Phase 3: Navbar (AC 10)
-8. Modify `src/components/Navbar.jsx` — reduce to 5 items
-9. Modify `src/components/Navbar.jsx` — remove profile/curriculum conditionals
-
-#### Phase 4: JourneyDashboard (AC 11)
-10. Create `src/pages/JourneyDashboard.jsx` + `JourneyDashboard.css`
-11. Modify `src/App.jsx` — import and use JourneyDashboard for auth'd `/`
-
-#### Phase 5: Home Page Update
-12. Modify `src/pages/Home.jsx` — update CTAs, copy, and framing to match spec H.5
-
-#### Phase 6: 401 Redirect (AC 13)
-13. Modify `src/context/UserContext.jsx` — add 401 event listener
-14. Modify `src/App.jsx` — add 401 → toast + redirect handler
-
-#### Phase 7: Tests
-15. Update `src/tests/test_routing.test.jsx` — verify redirect routes
-16. Add `src/tests/test_toast.test.jsx` — toast provider renders
-17. Run `npm test` — all vitest pass
-18. Run `cd server-python && python -m pytest tests/ -v` — all 44 pytest pass (no regressions)
+### Phase 5: Tests (AC 29–37)
+12. Create `server-python/tests/test_agent_policy.py` — explore/exploit + depth tests:
+    - `test_explore_ratio_low_confidence` — 5/8 dims below 0.5 confidence → ratio = 0.5
+    - `test_explore_ratio_all_confident` — all dims confident → ratio = 0.2
+    - `test_explore_mode_targets_lowest_confidence` — explore picks dim with lowest confidence
+    - `test_exploit_mode_targets_weakest_score` — exploit picks dim with lowest score
+    - `test_depth_anchor` — dim score 0.2 → "anchor"
+    - `test_depth_adapt` — dim score 0.45 → "adapt"
+    - `test_depth_author` — dim score 0.7 → "author"
+    - `test_early_journey_biased_explore` — total_interactions < 10 → higher explore ratio
+13. Create `server-python/tests/test_ingestion.py` — outcome rule tests:
+    - `test_scenario_option1_score_update` — without_ai → +0.03, confidence +0.08
+    - `test_scenario_option2_score_update` — human_leads → +0.02, confidence +0.08
+    - `test_question_correct` — +0.02 score, +0.05 confidence
+    - `test_question_incorrect` — -0.01 score, +0.05 confidence
+    - `test_prompt_lab_weighted_average` — verify α formula
+    - `test_concept_reading` — confidence +0.03 only
+    - `test_summary_reflection` — confidence +0.02 only
+14. Update `server-python/tests/test_journey.py` — new tests for enhanced endpoints:
+    - `test_next_returns_mode_field` — response includes `mode: "explore"|"exploit"`
+    - `test_next_returns_depth_field` — response includes `depth: "anchor"|"adapt"|"author"`
+    - `test_next_creates_agent_prompt_row` — agent_prompts table gets a row
+    - `test_outcomes_law3_score_drop` — full_outsource on strong dim → score decreases by 0.02
+    - `test_outcomes_law3_forces_next_target` — subsequent next targets the violated dimension
+    - `test_outcomes_law3_preserve_message` — reflection includes "don't outsource your superpower"
+15. Create `server-python/tests/test_new_endpoints.py`:
+    - `test_cognitive_summary` — returns strengths/weaknesses/uncertain
+    - `test_journey_stage` — returns stage + mastery eligibility
+    - `test_journey_discovery` — creates profile + reward state
+    - `test_journey_discovery_duplicate` — 409 if profile exists
+16. Add anti-pigeon-holing tests:
+    - `test_confidence_ceiling_095` — confidence never exceeds 0.95
+    - `test_forced_re_exploration_at_25` — 25th interaction forces explore mode
+17. Run full suite: `python -m pytest tests/ -v` — target 70+ tests, all pass, no regressions
 
 ---
 
 ## Testing Notes for Tester
 
-### Deployment Verification (Chunk 1, AC 1–9)
-- **AC 5:** `GET /api/health` → `{"status":"ok"}`
-- **AC 6:** `POST /api/cognitive/init` (no auth) → 401 `{"error":"Authentication required"}` (NOT 404)
-- **AC 7:** `POST /api/journey/next` (no auth) → 401 (NOT 404)
-- **AC 8:** E2E steps 11–15 all pass:
-  - Step 11: Cognitive init with 8 responses → profile created
-  - Step 12: GET cognitive profile → 8 dimensions
-  - Step 13: Journey next → 3 cards returned
-  - Step 14: Journey outcomes → profile updated + reflection
-  - Step 15: Second journey next → different target
-- **AC 9:** E2E steps 1–10 all still pass (no regression from deployment)
+### Explore/Exploit Verification (AC 4–9, per I.2 journey #4)
+- **Low-confidence explore:** Seed a profile with `empathetic.confidence = 0.2` and 8 other dims at confidence 0.8. Call `/api/journey/next`. Verify response `mode == "explore"` and targets `empathetic`.
+- **High-confidence exploit:** Seed all dims with confidence > 0.5, `operational.score = 0.2` (weakest). Call `/api/journey/next`. Verify `mode == "exploit"` and targets `operational`.
+- **Dynamic shift:** Seed profile with `total_interactions = 5` (< 10). Verify explore ratio is higher than at `total_interactions = 60`.
 
-### Route Restructure Verification (Chunk 2, AC 10–12)
-- **AC 10:** Count navbar links — exactly 5: Home, Learn, Practice, Chat, Profile/button
-- **AC 11:** Auth'd user visits `/` → sees JourneyDashboard (CognitiveRadar + "Next Challenge" CTA). Unauth'd user visits `/` → sees marketing Home page.
-- **AC 12:** Visit each old route → verify redirect:
-  - `/onboarding` → `/discover`
-  - `/curriculum/generate` → `/discover`
-  - `/curriculum` → `/learn`
-  - `/lesson/ch1/le1` → `/learn`
-  - `/epoch-lesson` → `/learn`
-  - `/learning-path` → `/`
-  - `/courses` → `/`
-  - `/dashboard` → `/`
-  - `/about` → `/`
+### Depth Selection Verification (AC 10–12, per I.2 journey #5)
+- Create profile with `analytical.score = 0.2`. Call `/api/journey/next`. Verify `depth == "anchor"`.
+- Create profile with `analytical.score = 0.45`. Verify `depth == "adapt"`.
+- Create profile with `analytical.score = 0.7`. Verify `depth == "author"`.
 
-### Quality Bar Verification (Chunk 2, AC 13–15)
-- **AC 13 (401 redirect):** Simulate expired token (set invalid JWT in localStorage). Navigate to any auth'd page → should redirect to `/login` with toast "Session expired".
-- **AC 14 (Toast):** Every user-facing mutation (save profile, submit outcomes, etc.) should show a toast notification (success or error). No silent `.catch(() => {})` in new code.
-- **AC 15 (ErrorBoundary):** Force a render error (e.g., component that throws). Should see friendly error page, not white screen. "Try again" button should recover.
+### Law 3 Full Enforcement Verification (AC 17–20, per I.2 journey #3)
+- Seed `creative.score = 0.85`. Submit outcome with `option_path = "full_outsource"` for creative.
+  - AC 17: Verify `creative.score` decreased by 0.02 (0.85 → 0.83)
+  - AC 18: Call `/api/journey/next` again. Verify it targets `creative` (preserve mode)
+  - AC 19: Verify reflection contains `"don't outsource your superpower"` or similar preserve message
+  - AC 20: Verify `card_interactions.cognitive_signal` includes `law3_violation: true`
+
+### Anti-Pigeon-Holing Verification (AC 21–23)
+- AC 21: Submit 100 interactions all boosting `analytical.confidence`. Verify it caps at 0.95.
+- AC 22: Submit 25 interactions. On the 26th, verify `mode == "explore"` (forced re-exploration).
+- AC 23: Create declining trend on a strong dimension. Verify it appears in exploration queue.
+
+### Outcome Ingestion Precision (AC 13–16, 33)
+- Scenario option 1: verify score += 0.03, confidence += 0.08
+- Scenario option 2: verify score += 0.02, confidence += 0.08
+- Question correct: verify score += 0.02, confidence += 0.05
+- Question incorrect: verify score -= 0.01, confidence += 0.05
+- All scores clamped to [0.0, 1.0]
+
+### New Endpoints (AC 24–26)
+- `GET /api/cognitive/summary` → returns `{strengths: [{key, label, score}], weaknesses: [...], uncertain: [...]}`
+- `GET /api/journey/stage` → returns `{stage: "discovery"|"growth"|"mastery", mastery_eligible: bool, avg_confidence: float, avg_score: float}`
+- `POST /api/journey/discovery` → same as cognitive/init but also creates reward_function_state
+
+### Regression (AC 34)
+- All 44 existing pytest tests must still pass (agent.py changes are backward-compatible — existing tests use the old function signatures which are preserved)
+- All 10 vitest tests pass (no frontend changes)
+- All 15 E2E steps pass (existing endpoints unchanged)
 
 ### Edge Cases
-- JourneyDashboard without cognitive profile → shows "Start Discovery" CTA
-- JourneyDashboard with cognitive profile → shows radar + "Next Challenge"
-- Old `/dashboard` link in browser history → redirects to `/` (no 404)
-- Navbar on mobile (hamburger menu) → shows same 5 items
-- Toast auto-dismiss after 4 seconds
-- ErrorBoundary does NOT catch API errors (only render errors) — API errors handled by toast
+- User with no `reward_function_state` row calls `/api/journey/next` → auto-creates one
+- All 8 dimensions at identical scores → `select_target_dimension` picks lowest confidence, then alphabetical
+- `total_interactions = 0` → always explore mode (can't exploit with no data)
+- Trend computation with < 10 samples → always "stable"
+- `agent_prompts` row created even if no outcomes submitted (challenge generated but abandoned)
 
-### Regressions
-- 44 pytest still pass (no backend changes in Chunk 2)
-- 6+ vitest still pass (routing tests updated for new routes)
-- `/discover` and `/learn` routes unchanged and functional
-- `/practice` route unchanged
-- `/chat` route unchanged
+### Key Files to Review
+- `infra/lambda/cognitive/policy.py` — all explore/exploit + depth logic
+- `infra/lambda/cognitive/ingestion.py` — all per-type outcome rules
+- `infra/lambda/cognitive/agent.py` — refactored to use policy + ingestion
+- `infra/lambda/journey/handler.py` — enhanced with reward state + agent prompts
+- `server-python/tests/test_agent_policy.py` — explore/exploit + depth tests
+- `server-python/tests/test_ingestion.py` — outcome rule precision tests
